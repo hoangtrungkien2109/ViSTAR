@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 import os
+import datetime
 from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, LargeBinary
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from passlib.context import CryptContext
@@ -16,9 +17,10 @@ import base64
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 import grpc
-from src.fe.streaming_pb2 import PushTextRequest, PopImageRequest
-from src.fe.streaming_pb2_grpc import StreamingStub
-
+# from src.fe.streaming_pb2 import PushTextRequest, PopImageRequest
+# from src.fe.streaming_pb2_grpc import StreamingStub
+import streaming.pb.streaming_pb2 as streaming_pb2
+from streaming.pb.streaming_pb2_grpc import StreamingStub
 import speech_recognition as sr
 import time
 
@@ -550,30 +552,44 @@ def get_grpc_stub():
     channel = grpc.insecure_channel('localhost:50051')
     return StreamingStub(channel)
 
+def get_timestamp():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+def push_text(stub, text):
+    try:
+        timestamp = get_timestamp()
+        request = streaming_pb2.PushTextRequest(text=text, time_stamp=timestamp)
+        response = stub.PushText(request)
+        return response.request_status, timestamp
+    except grpc.RpcError as e:
+        return f"Error: {str(e)}", None
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     stub = get_grpc_stub()
 
-    pop_image_response = stub.PopImage(PopImageRequest(time_stamp=""))
-
+    pop_image_response = stub.PopImage(streaming_pb2.PopImageRequest(time_stamp=""))
     try:
         while True:
             # Receive text from the client
             text = await websocket.receive_text()
+            # status,time_stamp = push_text(stub, text)
+            print(text)
             # Push text to gRPC service
-            push_image_response = stub.PushText(PushTextRequest(text=text, time_stamp=""))
+            push_image_response = stub.PushText(streaming_pb2.PushTextRequest(text=text, time_stamp=""))
+            print(push_image_response)
             # Start receiving images
-            for response in pop_image_response:
-                if response.image:
-                    # Convert bytes to base64
-                    base64_image = base64.b64encode(response.image).decode('utf-8')
-                    print("Show image in fe")
-                    await websocket.send_text(f"data:image/jpeg;base64,{base64_image}")
+            # for response in pop_image_response:
+            #     if response.image:
+            #         # Convert bytes to base64
+            #         base64_image = base64.b64encode(response.image).decode('utf-8')
+            #         await websocket.send_text(f"data:image/jpeg;base64,{base64_image}")
 
     except Exception as e:
         print(f"Error: {e}")
     finally:
+        print("closed")
         await websocket.close()
 
 

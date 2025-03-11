@@ -220,6 +220,7 @@
         }
 
         let ws;
+        let recognitionTimeout;
         let reconnectAttempts = 0;
         const maxReconnectAttempts = 5;
         const sendButton = document.getElementById('sendButton');
@@ -249,7 +250,7 @@
                 stopListening();
             }
         }
-
+        let previousWords = '';
         function startListening() {
             if (!SpeechRecognition) return;
 
@@ -258,36 +259,60 @@
             recognition.interimResults = true;
             recognition.lang = 'vi-VN';
 
-            recognition.onstart = () => {
-                isListening = true;
-                micButton.textContent = '⏹️';
-                micButton.classList.add('active');
-                updateStatus('Listening...', 'connected');
-            };
-
             recognition.onresult = (event) => {
-                const results = event.results;
-                for (let i = event.resultIndex; i < results.length; i++) {
-                    const transcript = results[i][0].transcript.trim();
-                    if (transcript) {
-                        // Append to textarea and send individual words
-                        textInput.value += transcript + ' ';
-                        const words = transcript.split(/\s+/);
-                        words.forEach(word => sendWord(word));
-                    }
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            // Process all results
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+
+                if (event.results[i].isFinal) {
+                    // Final result (complete sentence)
+                    finalTranscript += transcript + ' ';
+                } else {
+                    // Interim result (partial sentence)
+                    interimTranscript += transcript;
                 }
-            };
+            }
+            if (interimTranscript) {
+            const currentWords = interimTranscript.trim(); // Get current words
+            if (currentWords !== previousWords) {
+                // Split into words and find new words
+                const newWords = currentWords.split(/\s+/).filter(word => !previousWords.includes(word));
+                if (newWords.length > 0) {
+                    newWords.forEach(word => {
 
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                updateStatus('Recognition error: ' + event.error, 'error');
-                stopListening();
-            };
-
-            recognition.onend = stopListening;
-
-            recognition.start();
+                        textInput.value += word + ' ';
+                        sendWord(word);
+                    });
+                }
+                previousWords = currentWords; // Update previous words
+            }
         }
+        clearTimeout(recognitionTimeout);
+        recognitionTimeout = setTimeout(() => {
+            console.log('No input received for 1 second. Stopping recognition.');
+            stopListening();
+        }, 1000);
+    };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            updateStatus('Recognition error: ' + event.error, 'error');
+            stopListening();
+        };
+
+        recognition.onend = () => {
+            stopListening();
+            // Optionally, restart listening if needed
+            if (isListening) {
+                recognition.start();
+            }
+        };
+
+        recognition.start();
+    }
 
         function stopListening() {
             if (recognition) {
@@ -297,6 +322,7 @@
             micButton.textContent = '🎤';
             micButton.classList.remove('active');
             updateStatus('Connected', 'connected');
+            clearTimeout(recognitionTimeout);
         }
 
         function updateStatus(message, type) {
@@ -352,11 +378,6 @@
         }
 
 
-        function sendWord(word) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(word);
-            }
-        }
 
         function sendText() {
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -370,7 +391,15 @@
                 connect();
             }
         }
-
+        function sendWord(word) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(word);
+            console.log('Sent word:', word); // Debugging
+        } else {
+            updateStatus('Not connected. Attempting to reconnect...', 'connecting');
+            connect();
+        }
+    }
         // Initial connection
         connect();
 
