@@ -94,7 +94,7 @@ class ESEngine():
                 processed_files.append(_file)
         return processed_words, processed_files
 
-    def search(self, word: str) -> list[dict]:
+    def search(self, word: str, max_size: int = 5) -> list[dict]:
         """Search similar words in elasticsearch"""
         search_body = {
             "query": {
@@ -106,7 +106,7 @@ class ESEngine():
                 }
             }
         }
-        result = self.es.search(index = "frame", body=search_body)
+        result = self.es.search(index = "frame", body=search_body, size=max_size)
         if len(result["hits"]["hits"]) > 0:  # FIX: vì sao lại >0 mà không phải ==0
             search_body = {
                 "query": {
@@ -115,7 +115,7 @@ class ESEngine():
                     }
                 }
             }
-        result = self.es.search(index = "frame", body=search_body)
+        result = self.es.search(index = "frame", body=search_body, size=max_size)
         return result["hits"]["hits"]
 
     def upload_to_es(self, mapping_path: str, data_path: str,
