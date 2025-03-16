@@ -50,7 +50,7 @@ class HandleConcatFrame:
                 
                 self.processed_frame_queue.extend(result)
                 
-                logger.success("Processed successfuly")
+                # logger.success("Processed successfuly")
         except IndexError:
             self.processed_frame_queue.extend(frames)
         except Exception as e:
@@ -59,7 +59,10 @@ class HandleConcatFrame:
     def pop(self):
         try:
             a = np.array([self.processed_frame_queue.popleft()])
-            logger.info(f"len: {len(self.processed_frame_queue)}")
+            # logger.info(f"len: {len(self.processed_frame_queue)}")
             return a
         except IndexError:
             return None
+        
+    def getLen(self):
+        return len(self.processed_frame_queue)

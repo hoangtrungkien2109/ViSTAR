@@ -14,7 +14,7 @@ import time
 
 load_dotenv(override=True)
 DELAY_TIME = float(os.getenv("DELAY_TIME"))
-
+BATCH_SIZE = int(os.getenv("BATCH_SIZE"))
 class StreamingBaseService(streaming_pb2_grpc.StreamingServicer):
     _instance = None
     _lock = threading.Lock()
@@ -36,7 +36,6 @@ class StreamingBaseService(streaming_pb2_grpc.StreamingServicer):
 
     def PushText(self, request, context):
         try:
-            logger.info(request.text)
             self.text_queue.put(request.text)
             return streaming_pb2.PushTextResponse(request_status="Success")
         except Exception as e:
@@ -64,8 +63,9 @@ class StreamingBaseService(streaming_pb2_grpc.StreamingServicer):
 
     def PushImage(self, request, context):
         try:
-            self.image_queue.put(request.image)
-            return streaming_pb2.PushImageResponse(request_status="Success")
+            for i in range(BATCH_SIZE):
+                self.image_queue.put(request.image[i])
+            return streaming_pb2.BatchPushImageResponse(request_status="Success")
         except Exception as e:
             raise GrpcException(status_code=StatusCode.INTERNAL, details=str(e)) from e
 
@@ -74,16 +74,36 @@ class StreamingBaseService(streaming_pb2_grpc.StreamingServicer):
         start_time = time.time()
         while True:
             if self.image_queue.empty():
-                yield streaming_pb2.PopImageResponse(request_status="Empty")
+                yield streaming_pb2.BatchPopImageResponse(request_status="Empty")
             else:
-                image = self.image_queue.get()
-                logger.info("POP image")
-                yield streaming_pb2.PopImageResponse(request_status="Success", image=image)
-            # Measure FPS
-            frame_count += 1
-            elapsed_time = time.time() - start_time
-            if elapsed_time > 1:  # Calculate FPS every second
-                fps = frame_count / elapsed_time
-                logger.info(f"FPS: {fps:.2f}")
-                frame_count = 0
-                start_time = time.time()
+                images = []
+                for _ in range(BATCH_SIZE):
+                    images.append(self.image_queue.get())
+
+                yield streaming_pb2.BatchPopImageResponse(request_status="Success", images=images)
+                
+    def BatchPushImage(self, request, context):
+        try:
+            for img in request.images:  # Process batch images
+                self.image_queue.put(img)
+            return streaming_pb2.BatchPushImageResponse(request_status="Success")
+        except Exception as e:
+            raise GrpcException(status_code=StatusCode.INTERNAL, details=str(e)) from e
+
+    def BatchPopImage(self, request, context):
+        while True:
+            if self.image_queue.empty():
+                yield streaming_pb2.BatchPopImageResponse(request_status="Empty", images=[])
+            else:
+                images = []
+                for _ in range(min(BATCH_SIZE, self.image_queue.qsize())):
+                    img = self.image_queue.get()
+                    if not isinstance(img, bytes):
+                        logger.error(f"Invalid data type in queue: {type(img)} (expected bytes)")
+                        continue  
+                    images.append(img)
+
+                if images:  # Only send response if images exist
+                    yield streaming_pb2.BatchPopImageResponse(request_status="Success", images=images)
+
+

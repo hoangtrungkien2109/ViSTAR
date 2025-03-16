@@ -68,11 +68,34 @@ message PopImageResponse {
   string request_status = 2;
 }
 
+message BatchPushImageRequest {
+  repeated bytes images = 1;
+  string time_stamp = 2;
+}
+
+message BatchPushImageResponse {
+  string request_status = 1;
+}
+
+message BatchPopImageRequest {
+  string time_stamp = 1;
+}
+
+message BatchPopImageResponse {
+  repeated bytes images = 1;
+  string request_status = 2;
+}
+
 service Streaming {
   rpc PushText(PushTextRequest) returns (PushTextResponse) {}
   rpc PopText(PopTextRequest) returns (stream PopTextResponse) {}
+
   rpc PushFrame(PushFrameRequest) returns (PushFrameResponse) {}
   rpc PopFrame(PopFrameRequest) returns (stream PopFrameResponse) {}
+
   rpc PushImage(PushImageRequest) returns (PushImageResponse) {}
   rpc PopImage(PopImageRequest) returns (stream PopImageResponse) {}
+
+  rpc BatchPushImage(BatchPushImageRequest) returns (BatchPushImageResponse);
+  rpc BatchPopImage(BatchPopImageRequest) returns (stream BatchPopImageResponse);
 }
