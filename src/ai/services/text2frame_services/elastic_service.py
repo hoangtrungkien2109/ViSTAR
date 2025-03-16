@@ -104,18 +104,20 @@ class ESEngine():
                         "fuzziness": "AUTO"
                     }
                 }
-            }
+            },
+            "size": max_size
         }
-        result = self.es.search(index = "frame", body=search_body, size=max_size)
+        result = self.es.search(index = "frame", body=search_body)
         if len(result["hits"]["hits"]) > 0:  # FIX: vì sao lại >0 mà không phải ==0
             search_body = {
                 "query": {
                     "match": {
                         "word": word,
                     }
-                }
+                },
+                "size": max_size
             }
-        result = self.es.search(index = "frame", body=search_body, size=max_size)
+        result = self.es.search(index = "frame", body=search_body)
         return result["hits"]["hits"]
 
     def upload_to_es(self, mapping_path: str, data_path: str,

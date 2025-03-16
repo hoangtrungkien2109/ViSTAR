@@ -24,3 +24,7 @@ test.*
 # Proto files
 streaming_pb2.py
 streaming_pb2_grpc.py
+
+# Scripts
+scripts/
+*.sh
