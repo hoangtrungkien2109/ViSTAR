@@ -24,3 +24,5 @@ test.*
 # Proto files
 streaming_pb2.py
 streaming_pb2_grpc.py
+cut.pth
+.DS_Store
