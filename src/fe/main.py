@@ -1,11 +1,12 @@
 import asyncio
 import base64
 import grpc.aio
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from streaming_pb2 import PushTextRequest, PopImageRequest
+from streaming_pb2 import PushTextRequest, PopImageRequest, BatchPopImageResponse
 from streaming_pb2_grpc import StreamingStub
-
+import time
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -28,14 +29,18 @@ async def handle_text(websocket: WebSocket, stub: StreamingStub):
 async def handle_images(websocket: WebSocket, stub: StreamingStub, queue: asyncio.Queue):
     """Process image stream from gRPC and send via WebSocket."""
     try:
-        async for response in stub.PopImage(PopImageRequest(time_stamp="")):
-            if response.image:
-                base64_image = base64.b64encode(response.image).decode('utf-8')
+        async for response in stub.BatchPopImage(PopImageRequest(time_stamp="")):
+            if len(response.images) == 0:
+                continue
+            for image in response.images:
+                base64_image = base64.b64encode(image).decode('utf-8')
                 await queue.put(f"data:image/jpeg;base64,{base64_image}")
+                time.sleep(1 / 60)  # Maintain ~30 FPS
     except WebSocketDisconnect:
         print("Client disconnected from image handling.")
     except Exception as e:
         print(f"Image handling error: {e}")
+
 
 async def send_images(websocket: WebSocket, queue: asyncio.Queue):
     """Send images from queue to WebSocket in a controlled manner (30 FPS)."""
@@ -43,7 +48,7 @@ async def send_images(websocket: WebSocket, queue: asyncio.Queue):
         while True:
             image_data = await queue.get()
             await websocket.send_text(image_data)
-            await asyncio.sleep(1 / 60)  # Maintain ~30 FPS
+            # await asyncio.sleep(1 / 60)  # Maintain ~30 FPS
     except WebSocketDisconnect:
         print("Client disconnected from send_images.")
     except Exception as e:
@@ -72,6 +77,12 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close()
         await channel.close()  # Properly close gRPC connection
 
+
+@app.get("/")
+async def get_index():
+    """Serve the HTML page."""
+    with open("./index.html", "r") as f:
+        return HTMLResponse(content=f.read())
 
 if __name__ == "__main__":
     import uvicorn
