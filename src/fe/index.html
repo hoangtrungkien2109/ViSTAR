@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Optimized Real-time Image Streaming</title>
+  <style>
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .input-area {
+      margin-bottom: 20px;
+    }
+    #textInput {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      resize: vertical;
+    }
+    #imageCanvas {
+      width: 100%;
+      max-width: 640px;
+      height: auto;
+      border: 1px solid #ccc;
+      display: block;
+      margin: 0 auto;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 5px 10px;
+      border-radius: 4px;
+    }
+    .stats {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .status.connected { background-color: #d4edda; color: #155724; }
+    .status.disconnected { background-color: #f8d7da; color: #721c24; }
+    .status.connecting { background-color: #fff3cd; color: #856404; }
+    button {
+      padding: 8px 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0056b3; }
+    button:disabled { background-color: #cccccc; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="input-area">
+      <textarea id="textInput" rows="4" placeholder="Enter text to send..." onkeypress="handleKeyPress(event)"></textarea>
+      <button id="sendButton" onclick="sendText()">Send Text</button>
+    </div>
+    <div class="image-area">
+      <canvas id="imageCanvas"></canvas>
+      <div id="status" class="status">Not connected</div>
+      <div id="stats" class="stats"></div>
+    </div>
+  </div>
+
+  <script>
+    class ImageStreamManager {
+      constructor() {
+        this.canvas = document.getElementById('imageCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.statsElement = document.getElementById('stats');
+        this.frameCount = 0;
+        this.frameRate = 0;
+        this.lastFrameTime = Date.now();
+        // pendingFrame chứa data của frame mới nhất nếu đang xử lý
+        this.pendingFrame = null;
+        this.processing = false;
+
+        // Nếu trình duyệt hỗ trợ OffscreenCanvas, tạo offscreen canvas
+        if (window.OffscreenCanvas) {
+          this.offscreen = new OffscreenCanvas(this.canvas.width, this.canvas.height);
+          this.offscreenCtx = this.offscreen.getContext('2d');
+        } else {
+          this.offscreen = null;
+        }
+
+        setInterval(() => this.updateStats(), 1000);
+      }
+
+      async processImage(imageData) {
+        // Lưu frame mới nhất, bỏ qua các frame cũ nếu có
+        this.pendingFrame = imageData;
+        if (this.processing) return;
+        this.processing = true;
+
+        while (this.pendingFrame) {
+          const dataToProcess = this.pendingFrame;
+          this.pendingFrame = null;  // Xoá frame cũ
+          try {
+            // Chuyển từ base64 sang Blob
+            const blob = this.base64ToBlob(dataToProcess);
+            if (!blob) continue;
+            // Sử dụng createImageBitmap để giải mã ảnh bất đồng bộ
+            const bitmap = await createImageBitmap(blob);
+            
+            // Điều chỉnh kích thước canvas nếu cần
+            if (this.canvas.width !== bitmap.width || this.canvas.height !== bitmap.height) {
+              this.canvas.width = bitmap.width;
+              this.canvas.height = bitmap.height;
+              if (this.offscreen) {
+                this.offscreen.width = bitmap.width;
+                this.offscreen.height = bitmap.height;
+              }
+            }
+            
+            // Đồng bộ vẽ với requestAnimationFrame
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            
+            if (this.offscreen) {
+              this.offscreenCtx.clearRect(0, 0, this.offscreen.width, this.offscreen.height);
+              this.offscreenCtx.drawImage(bitmap, 0, 0);
+              this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+              this.ctx.drawImage(this.offscreen, 0, 0);
+            } else {
+              this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+              this.ctx.drawImage(bitmap, 0, 0);
+            }
+            
+            this.updateFrameStats();
+            // Giải phóng bitmap nếu có hỗ trợ close
+            bitmap.close && bitmap.close();
+          } catch (error) {
+            console.error('Error processing image:', error);
+          }
+        }
+        this.processing = false;
+      }
+
+      base64ToBlob(base64Data) {
+        try {
+          const parts = base64Data.split(';base64,');
+          const contentType = parts[0].split(':')[1];
+          const byteCharacters = atob(parts[1]);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          return new Blob([byteArray], { type: contentType });
+        } catch (error) {
+          console.error('Error converting base64 to blob:', error);
+          return null;
+        }
+      }
+
+      updateFrameStats() {
+        this.frameCount++;
+        const now = Date.now();
+        const timeDiff = now - this.lastFrameTime;
+        if (timeDiff >= 1000) {
+          this.frameRate = Math.round((this.frameCount * 1000) / timeDiff);
+          this.frameCount = 0;
+          this.lastFrameTime = now;
+        }
+      }
+
+      updateStats() {
+        const memory = window.performance?.memory?.usedJSHeapSize;
+        const memoryMB = memory ? Math.round(memory / (1024 * 1024)) : 'N/A';
+        this.statsElement.textContent = `FPS: ${this.frameRate} | Memory: ${memoryMB}MB`;
+      }
+
+      clear() {
+        this.pendingFrame = null;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+    }
+
+    let ws;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    const sendButton = document.getElementById('sendButton');
+    const statusElement = document.getElementById('status');
+    const textInput = document.getElementById('textInput');
+    const imageManager = new ImageStreamManager();
+
+    function updateStatus(message, type) {
+      statusElement.textContent = message;
+      statusElement.className = 'status ' + type;
+    }
+
+    function connect() {
+      updateStatus('Connecting...', 'connecting');
+      sendButton.disabled = true;
+      ws = new WebSocket('ws://localhost:8000/ws');
+
+      ws.onopen = function() {
+        updateStatus('Connected', 'connected');
+        sendButton.disabled = false;
+        reconnectAttempts = 0;
+      };
+
+      ws.onmessage = function(event) {
+        if (event.data.startsWith('data:image')) {
+          imageManager.processImage(event.data);
+        }
+      };
+
+      ws.onclose = function() {
+        updateStatus('Disconnected', 'disconnected');
+        sendButton.disabled = true;
+        imageManager.clear();
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+          updateStatus(`Reconnecting in ${delay/1000} seconds...`, 'connecting');
+          setTimeout(connect, delay);
+        } else {
+          updateStatus('Failed to connect after multiple attempts', 'disconnected');
+        }
+      };
+
+      ws.onerror = function(error) {
+        console.error('WebSocket error:', error);
+        updateStatus('Connection error', 'disconnected');
+        sendButton.disabled = true;
+      };
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendText();
+      }
+    }
+
+    function sendText() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const text = textInput.value.trim();
+        if (text) {
+          ws.send(text);
+          textInput.value = '';
+        }
+      } else {
+        updateStatus('Not connected. Attempting to reconnect...', 'connecting');
+        connect();
+      }
+    }
+
+    // Kết nối ban đầu
+    connect();
+
+    // Xử lý thay đổi trạng thái hiển thị trang
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden && (!ws || ws.readyState !== WebSocket.OPEN)) {
+        reconnectAttempts = 0;
+        connect();
+      }
+    });
+
+    // Clean up khi đóng trang
+    window.addEventListener('beforeunload', function() {
+      imageManager.clear();
+      if (ws) {
+        ws.close();
+      }
+    });
+  </script>
+</body>
+</html>

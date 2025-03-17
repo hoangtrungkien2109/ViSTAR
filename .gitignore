@@ -1,5 +1,5 @@
 # Environments
-# .env
+
 .venv
 env/
 venv/
@@ -13,11 +13,13 @@ data/
 
 # Cache
 __pycache__/
+logs
 
 # Testing
 unit_test.py
 *_temp.py
 *copy.py
+test.*
 
 # Proto files
 streaming_pb2.py

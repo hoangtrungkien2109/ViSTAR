@@ -23,7 +23,7 @@ class ESEngine():
 
     def __init__(self, index_name: str = "frame"):
         self.index_name = index_name
-        self.es = Elasticsearch("http://localhost:9200", timeout=60)
+        self.es = Elasticsearch("http://localhost:9200", request_timeout=60)
         if not self.es.indices.exists(index=self.index_name):
             self.es.indices.create(index=self.index_name)
             logger.warning("INDEX CREATED")
@@ -96,25 +96,25 @@ class ESEngine():
 
     def search(self, word: str) -> list[dict]:
         """Search similar words in elasticsearch"""
-        # search_body = {
-        #     "query": {
-        #         "fuzzy": {
-        #             "word": {
-        #                 "value": word,
-        #                 "fuzziness": "AUTO"
-        #             }
-        #         }
-        #     }
-        # }
-        # result = self.es.search(index = "frame", body=search_body)
-        # if len(result["hits"]["hits"]) > 0:  # FIX: vì sao lại >0 mà không phải ==0
         search_body = {
             "query": {
-                "match": {
-                    "word": word,
+                "fuzzy": {
+                    "word": {
+                        "value": word,
+                        "fuzziness": "AUTO"
+                    }
                 }
             }
         }
+        result = self.es.search(index = "frame", body=search_body)
+        if len(result["hits"]["hits"]) > 0:  # FIX: vì sao lại >0 mà không phải ==0
+            search_body = {
+                "query": {
+                    "match": {
+                        "word": word,
+                    }
+                }
+            }
         result = self.es.search(index = "frame", body=search_body)
         return result["hits"]["hits"]
 
@@ -154,7 +154,8 @@ class ESEngine():
             #     logger.debug(e)
             #     logger.warning(f"Word: {word}, File: {file_name}")
         logger.warning("Starting to upload to elasticsearch")
-        helpers.streaming_bulk(self.es, data)
+        for i in range(100):
+            helpers.bulk(self.es, data[int(len(data)/100*i):int(min(len(data), (len(data)/100*(i+1))))])
         logger.info("Data pushed to elastic successfully")
         if json_path is not None:
             with open(json_path, "a") as f:
@@ -183,13 +184,5 @@ class ESEngine():
 
 
 if __name__ == "__main__":
-    es = ESEngine()
-    ds = pd.read_csv('modal_data.csv')
-
-    filenames = ds.ID
-    words = ds.Word
-    word_to_file = {}
-    file_to_word = {}
-    # es.clear_data_es()
-    es.upload_to_es('modal_data.csv',
-                    "src/models/model_utils/manipulate/data_convert")
+    es: ESEngine = ESEngine()
+    print(es.search("kiến"))
