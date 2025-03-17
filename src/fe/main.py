@@ -35,7 +35,6 @@ async def handle_images(websocket: WebSocket, stub: StreamingStub, queue: asynci
             for image in response.images:
                 base64_image = base64.b64encode(image).decode('utf-8')
                 await queue.put(f"data:image/jpeg;base64,{base64_image}")
-                time.sleep(1 / 60)  # Maintain ~30 FPS
     except WebSocketDisconnect:
         print("Client disconnected from image handling.")
     except Exception as e:
@@ -48,7 +47,7 @@ async def send_images(websocket: WebSocket, queue: asyncio.Queue):
         while True:
             image_data = await queue.get()
             await websocket.send_text(image_data)
-            # await asyncio.sleep(1 / 60)  # Maintain ~30 FPS
+            await asyncio.sleep(1 / 60)  # Maintain ~30 FPS
     except WebSocketDisconnect:
         print("Client disconnected from send_images.")
     except Exception as e:
@@ -59,7 +58,7 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket connection for real-time text and image streaming."""
     await websocket.accept()
     stub, channel = await get_grpc_stub()
-    queue = asyncio.Queue(maxsize=1)  # Store only the latest frame
+    queue = asyncio.Queue(maxsize=100)
 
     text_task = asyncio.create_task(handle_text(websocket, stub))
     image_task = asyncio.create_task(handle_images(websocket, stub, queue))
@@ -75,8 +74,7 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"WebSocket error: {e}")
     finally:
         await websocket.close()
-        await channel.close()  # Properly close gRPC connection
-
+        await channel.close()
 
 @app.get("/")
 async def get_index():
