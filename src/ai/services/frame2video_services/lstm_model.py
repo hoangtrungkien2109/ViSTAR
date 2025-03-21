@@ -65,10 +65,11 @@ def predict(model, x):
     # Make prediction
     with torch.no_grad():
         output = model(x)
-        prediction = torch.sigmoid(output).cpu().numpy()
+        prediction = torch.sigmoid(output)
+        prediction = prediction.cpu().numpy()  # Move to CPU before converting to NumPy
         prediction = np.where(prediction > 0.8, 1, 0)
-    prediction = prediction.reshape(300,1)
-    return prediction[:l,:]
+    prediction = prediction.reshape(300, 1)
+    return prediction[:l, :]
 
 if __name__ == "__main__":
     # Load the pre-trained model

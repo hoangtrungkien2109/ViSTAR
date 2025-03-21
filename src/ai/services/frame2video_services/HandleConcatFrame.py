@@ -59,7 +59,7 @@ class HandleConcatFrame:
     def pop(self):
         try:
             a = np.array([self.processed_frame_queue.popleft()])
-            # logger.info(f"len: {len(self.processed_frame_queue)}")
+            logger.info(f"len: {len(self.processed_frame_queue)}")
             return a
         except IndexError:
             return None
