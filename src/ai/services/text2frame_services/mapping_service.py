@@ -30,7 +30,7 @@ class SimilaritySentence():
     #     return cls._instance
 
     def __init__(self,
-            default_dict_path: str = "D:/NCKH/Text_to_Sign/ViSTAR/src/ai/services/text2frame_services/data_old/character_dict.rar",
+            default_dict_path: str = "D:/NCKH/Text_to_Sign/ViSTAR/src/ai/services/text2frame_services/data/character_dict.json",
             ner_model_name: str = "NlpHUST/ner-vietnamese-electra-base",
             embed_model_name: str = "dangvantuan/vietnamese-embedding",
             ner_min_length: int = 5,
