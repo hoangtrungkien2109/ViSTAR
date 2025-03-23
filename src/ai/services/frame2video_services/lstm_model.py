@@ -1,3 +1,4 @@
+from loguru import logger
 import torch
 import torch.nn as nn
 import numpy as np
@@ -50,7 +51,7 @@ def load_model(filename):
     output_size = 1
     # Initialize the model
     model = LSTMModel(input_size, hidden_size, num_layers, output_size).to(device)
-    
+
     checkpoint = torch.load(filename, map_location=device, weights_only=True)
     model.load_state_dict(checkpoint['model_state_dict'])
     print(f"Model loaded from {filename}")
@@ -61,13 +62,15 @@ def predict(model, x):
     x = torch.FloatTensor(x).unsqueeze(0).to(device)  # Add batch dimension and move to device
     l = x.shape[1]
     x = pad_tensor(x)
-    
     # Make prediction
     with torch.no_grad():
-        output = model(x)
-        prediction = torch.sigmoid(output)
-        prediction = prediction.cpu().numpy()  # Move to CPU before converting to NumPy
-        prediction = np.where(prediction > 0.8, 1, 0)
+        try:
+            output = model(x)
+            prediction = torch.sigmoid(output)
+            prediction = prediction.cpu().numpy()  # Move to CPU before converting to NumPy
+            prediction = np.where(prediction > 0.8, 1, 0)
+        except Exception as e:
+            logger.error(e)
     prediction = prediction.reshape(300, 1)
     return prediction[:l, :]
 

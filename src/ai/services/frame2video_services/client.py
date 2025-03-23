@@ -95,7 +95,6 @@ def send_image_into_streaming(stub, handle_concat_frame: HandleConcatFrame):
             continue
         if is_similar_frame(mem, data) and handle_concat_frame.getLen() > 100:
             continue
-
         try:
             image_bytes = visualize_landmarks_minimal(data)
             batch.append(image_bytes)
