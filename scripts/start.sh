@@ -15,6 +15,6 @@ cd src/fe && python main.py > "D:/NCKH/Text_to_Sign/ViSTAR/$LOG_DIR/fe_server.lo
 
 echo "Opening index.html..."
 start D:/NCKH/Text_to_Sign/ViSTAR/src/fe/index.html
-# python -m src.be.main
+# python -m src.be.main > "D:/NCKH/Text_to_Sign/ViSTAR/$LOG_DIR/be_server.log" 2>&1 &
 
 echo "All services started."

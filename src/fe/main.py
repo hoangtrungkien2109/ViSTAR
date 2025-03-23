@@ -79,9 +79,9 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/")
 async def get_index():
     """Serve the HTML page."""
-    with open("./index.html", "r") as f:
+    with open("./index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
