@@ -1,18 +1,15 @@
 # requirements.txt
-django==5.0
-channels==4.0.0
-grpcio==1.60.0
-grpcio-tools==1.60.0
+# django==5.0
+# channels==4.0.0
+# protobuf==4.25.0
+# grpcio==1.60.0
+# grpcio-tools==1.60.0
 passlib==1.7.4
-mediapipe==0.10.21
+mediapipe==0.10.20
 bcrypt==4.2.1
 fastapi==0.115.8
 sqlalchemy==2.0.38
 python-multipart==0.0.20
 uvicorn==0.34.0
-protobuf==4.25.0
-passlib==1.7.4
-mediapipe==0.10.21
-bcrypt==4.2.1
 elasticsearch==8.17.1
 torch

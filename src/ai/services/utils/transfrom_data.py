@@ -1,6 +1,7 @@
 import src.streaming.pb.streaming_pb2 as streaming_pb2
 import src.streaming.pb.streaming_pb2_grpc as streaming_pb2_grpc
 import numpy as np
+from loguru import logger
 def numpy_to_matrix_list(array):
     matrix_list = streaming_pb2.MatrixList()
     
@@ -20,7 +21,7 @@ def matrix_list_to_numpy(matrix_list):
         for matrix in matrix_list.matrix
     ])
 
-    print(f"Converted back to numpy array of shape {numpy_array.shape}")
+    # logger.info(f"Converted back to numpy array of shape {numpy_array.shape}")
     return numpy_array
 
 import cv2

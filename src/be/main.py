@@ -19,8 +19,8 @@ from fastapi.staticfiles import StaticFiles
 import grpc
 # from src.fe.streaming_pb2 import PushTextRequest, PopImageRequest
 # from src.fe.streaming_pb2_grpc import StreamingStub
-import streaming.pb.streaming_pb2 as streaming_pb2
-from streaming.pb.streaming_pb2_grpc import StreamingStub
+import src.streaming.pb.streaming_pb2 as streaming_pb2
+from src.streaming.pb.streaming_pb2_grpc import StreamingStub
 import speech_recognition as sr
 import time
 

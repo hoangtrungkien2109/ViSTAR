@@ -1,9 +1,12 @@
+import os
+from dotenv import load_dotenv
 from collections import deque
 import numpy as np
 from loguru import logger
 from src.ai.services.frame2video_services.lstm_model import load_model, predict
+load_dotenv()
 
-lstm_model = load_model("/Users/trHien/DoAnTotNghiep/ViSTAR/src/ai/services/frame2video_services/cut.pth")
+lstm_model = load_model(os.getenv("CUTTING_MODEL_PATH"))
 
 def concatenate_frame(prev_frame, post_frame, rest):
     """
@@ -34,9 +37,10 @@ class HandleConcatFrame:
         push frame into queue with process progress
         """
         try:
-            frames = frames/1000
-            p = predict(lstm_model, frames)
-            frames = frames[p.flatten() == 1]
+            if len(frames) != 1:
+                frames = frames/1000.0
+                p = predict(lstm_model, frames)
+                frames = frames[p.flatten() == 1]
             if (self.processed_frame_queue[-1] is not None):
                 
                 prev_frame = self.processed_frame_queue[-1]
@@ -53,7 +57,7 @@ class HandleConcatFrame:
         except IndexError:
             self.processed_frame_queue.extend(frames)
         except Exception as e:
-            print(e)
+            logger.error(e)
     
     def pop(self):
         try:

@@ -29,6 +29,9 @@ class WordList(BaseModel):
     def get_sentence(self):
         return " ".join([segment.segment for segment in self.segment_list])
 
+    def get_all_segment(self):
+        return 
+
     def put(self, word: Word, index: int = -1):
         if index == -1:
             self.special_word_list.append(Word(word=word))

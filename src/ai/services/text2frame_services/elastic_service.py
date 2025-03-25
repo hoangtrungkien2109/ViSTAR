@@ -94,7 +94,7 @@ class ESEngine():
                 processed_files.append(_file)
         return processed_words, processed_files
 
-    def search(self, word: str) -> list[dict]:
+    def search(self, word: str, max_size: int = 5) -> list[dict]:
         """Search similar words in elasticsearch"""
         search_body = {
             "query": {
@@ -104,7 +104,8 @@ class ESEngine():
                         "fuzziness": "AUTO"
                     }
                 }
-            }
+            },
+            "size": max_size
         }
         result = self.es.search(index = "frame", body=search_body)
         if len(result["hits"]["hits"]) > 0:  # FIX: vì sao lại >0 mà không phải ==0
@@ -113,7 +114,8 @@ class ESEngine():
                     "match": {
                         "word": word,
                     }
-                }
+                },
+                "size": max_size
             }
         result = self.es.search(index = "frame", body=search_body)
         return result["hits"]["hits"]
@@ -125,7 +127,7 @@ class ESEngine():
         frame_chunks = []
         for file_name in file_names:
             try:
-                frame_chunks.append(np.load(data_path + f'/landmarks_{file_name}.npy').tolist())
+                frame_chunks.append((np.load(data_path + f'/landmarks_{file_name}.npy') * 1000).astype(np.int16).tolist())
             except FileNotFoundError:
                 logger.error(file_name)
         data = []
@@ -185,4 +187,5 @@ class ESEngine():
 
 if __name__ == "__main__":
     es: ESEngine = ESEngine()
+    es.upload_to_es()
     print(es.search("kiến"))
