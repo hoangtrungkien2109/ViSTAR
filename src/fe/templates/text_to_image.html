@@ -80,8 +80,10 @@
 <body>
     <div class="container">
         <div class="input-area">
+            {% if current_user.is_admin %}
             <textarea id="textInput" rows="4" placeholder="Enter text to send..." onkeypress="handleKeyPress(event)"></textarea>
             <button id="sendButton" onclick="sendText()">Send Text</button>
+            {% endif %}
             <button id="micButton" onclick="toggleMic()">🎤</button>
         </div>
         <div class="image-area">
@@ -93,131 +95,116 @@
 
     <script>
         class ImageStreamManager {
-            constructor() {
-                this.canvas = document.getElementById('imageCanvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.statsElement = document.getElementById('stats');
-                this.frameCount = 0;
-                this.frameRate = 0;
-                this.lastFrameTime = Date.now();
-                this.currentBlob = null;
-                this.currentObjectURL = null;
+      constructor() {
+        this.canvas = document.getElementById('imageCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.statsElement = document.getElementById('stats');
+        this.frameCount = 0;
+        this.frameRate = 0;
+        this.lastFrameTime = Date.now();
+        // pendingFrame chứa data của frame mới nhất nếu đang xử lý
+        this.pendingFrame = null;
+        this.processing = false;
 
-                // Set initial canvas size
-                this.canvas.width = 640;
-                this.canvas.height = 480;
-
-                // Stats update interval
-                setInterval(() => this.updateStats(), 1000);
-            }
-
-            async processImage(imageData) {
-                try {
-                    // Clean up previous resources
-                    this.cleanup();
-
-                    // Convert base64 to blob
-                    this.currentBlob = this.base64ToBlob(imageData);
-                    this.currentObjectURL = URL.createObjectURL(this.currentBlob);
-
-                    // Create temporary image for loading
-                    const img = new Image();
-
-                    await new Promise((resolve, reject) => {
-                        img.onload = () => {
-                            // Adjust canvas size if needed
-                            if (this.canvas.width !== img.width || this.canvas.height !== img.height) {
-                                this.canvas.width = img.width;
-                                this.canvas.height = img.height;
-                            }
-
-                            // Clear previous frame
-                            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-                            // Draw new frame
-                            this.ctx.drawImage(img, 0, 0);
-
-                            // Update stats
-                            this.updateFrameStats();
-
-                            // Cleanup immediately after drawing
-                            URL.revokeObjectURL(this.currentObjectURL);
-                            this.currentObjectURL = null;
-                            resolve();
-                        };
-
-                        img.onerror = reject;
-                        img.src = this.currentObjectURL;
-                    });
-
-                } catch (error) {
-                    console.error('Error processing image:', error);
-                } finally {
-                    // Ensure cleanup happens even if there's an error
-                    this.cleanup();
-                }
-            }
-
-            cleanup() {
-                // Revoke any existing object URL
-                if (this.currentObjectURL) {
-                    URL.revokeObjectURL(this.currentObjectURL);
-                    this.currentObjectURL = null;
-                }
-
-                // Clear blob reference
-                this.currentBlob = null;
-
-                // Force garbage collection hint
-                if (window.gc) {
-                    window.gc();
-                }
-            }
-
-            base64ToBlob(base64Data) {
-                try {
-                    const parts = base64Data.split(';base64,');
-                    const contentType = parts[0].split(':')[1];
-                    const raw = window.atob(parts[1]);
-                    const rawLength = raw.length;
-                    const uInt8Array = new Uint8Array(rawLength);
-
-                    for (let i = 0; i < rawLength; ++i) {
-                        uInt8Array[i] = raw.charCodeAt(i);
-                    }
-
-                    return new Blob([uInt8Array], { type: contentType });
-                } catch (error) {
-                    console.error('Error converting base64 to blob:', error);
-                    return null;
-                }
-            }
-
-            updateFrameStats() {
-                this.frameCount++;
-                const now = Date.now();
-                const timeDiff = now - this.lastFrameTime;
-
-                if (timeDiff >= 1000) {
-                    this.frameRate = Math.round((this.frameCount * 1000) / timeDiff);
-                    this.frameCount = 0;
-                    this.lastFrameTime = now;
-                }
-            }
-
-            updateStats() {
-                const memory = window.performance?.memory?.usedJSHeapSize;
-                const memoryMB = memory ? Math.round(memory / (1024 * 1024)) : 'N/A';
-
-                this.statsElement.textContent =
-                    `FPS: ${this.frameRate} | Memory: ${memoryMB}MB`;
-            }
-
-            clear() {
-                this.cleanup();
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            }
+        // Nếu trình duyệt hỗ trợ OffscreenCanvas, tạo offscreen canvas
+        if (window.OffscreenCanvas) {
+          this.offscreen = new OffscreenCanvas(this.canvas.width, this.canvas.height);
+          this.offscreenCtx = this.offscreen.getContext('2d');
+        } else {
+          this.offscreen = null;
         }
+
+        setInterval(() => this.updateStats(), 1000);
+      }
+
+      async processImage(imageData) {
+        // Lưu frame mới nhất, bỏ qua các frame cũ nếu có
+        this.pendingFrame = imageData;
+        if (this.processing) return;
+        this.processing = true;
+
+        while (this.pendingFrame) {
+          const dataToProcess = this.pendingFrame;
+          this.pendingFrame = null;  // Xoá frame cũ
+          try {
+            // Chuyển từ base64 sang Blob
+            const blob = this.base64ToBlob(dataToProcess);
+            if (!blob) continue;
+            // Sử dụng createImageBitmap để giải mã ảnh bất đồng bộ
+            const bitmap = await createImageBitmap(blob);
+
+            // Điều chỉnh kích thước canvas nếu cần
+            if (this.canvas.width !== bitmap.width || this.canvas.height !== bitmap.height) {
+              this.canvas.width = bitmap.width;
+              this.canvas.height = bitmap.height;
+              if (this.offscreen) {
+                this.offscreen.width = bitmap.width;
+                this.offscreen.height = bitmap.height;
+              }
+            }
+
+            // Đồng bộ vẽ với requestAnimationFrame
+            await new Promise(resolve => requestAnimationFrame(resolve));
+
+            if (this.offscreen) {
+              this.offscreenCtx.clearRect(0, 0, this.offscreen.width, this.offscreen.height);
+              this.offscreenCtx.drawImage(bitmap, 0, 0);
+              this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+              this.ctx.drawImage(this.offscreen, 0, 0);
+            } else {
+              this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+              this.ctx.drawImage(bitmap, 0, 0);
+            }
+
+            this.updateFrameStats();
+            // Giải phóng bitmap nếu có hỗ trợ close
+            bitmap.close && bitmap.close();
+          } catch (error) {
+            console.error('Error processing image:', error);
+          }
+        }
+        this.processing = false;
+      }
+
+      base64ToBlob(base64Data) {
+        try {
+          const parts = base64Data.split(';base64,');
+          const contentType = parts[0].split(':')[1];
+          const byteCharacters = atob(parts[1]);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          return new Blob([byteArray], { type: contentType });
+        } catch (error) {
+          console.error('Error converting base64 to blob:', error);
+          return null;
+        }
+      }
+
+      updateFrameStats() {
+        this.frameCount++;
+        const now = Date.now();
+        const timeDiff = now - this.lastFrameTime;
+        if (timeDiff >= 1000) {
+          this.frameRate = Math.round((this.frameCount * 1000) / timeDiff);
+          this.frameCount = 0;
+          this.lastFrameTime = now;
+        }
+      }
+
+      updateStats() {
+        const memory = window.performance?.memory?.usedJSHeapSize;
+        const memoryMB = memory ? Math.round(memory / (1024 * 1024)) : 'N/A';
+        this.statsElement.textContent = `FPS: ${this.frameRate} | Memory: ${memoryMB}MB`;
+      }
+
+      clear() {
+        this.pendingFrame = null;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+    }
 
         let ws;
         let recognitionTimeout;

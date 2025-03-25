@@ -14,12 +14,12 @@ import cv2
 import mediapipe as mp
 import asyncio
 import base64
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 import grpc
 # from src.fe.streaming_pb2 import PushTextRequest, PopImageRequest
 # from src.fe.streaming_pb2_grpc import StreamingStub
-import src.streaming.pb.streaming_pb2 as streaming_pb2
+from src.streaming.pb.streaming_pb2 import PushTextRequest, PopImageRequest, BatchPopImageResponse
 from src.streaming.pb.streaming_pb2_grpc import StreamingStub
 import speech_recognition as sr
 import time
@@ -548,49 +548,82 @@ def capture_stop(db: Session = Depends(get_db)):
 
     return {"status": "capturing stopped", "saved_file": filename, "word": current_word}
 
-def get_grpc_stub():
-    channel = grpc.insecure_channel('localhost:50051')
-    return StreamingStub(channel)
+async def get_grpc_stub():
+    """Initialize and return a gRPC stub."""
+    channel = grpc.aio.insecure_channel('localhost:50051')
+    return StreamingStub(channel), channel
 
-def get_timestamp():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+# def get_timestamp():
+#     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
-def push_text(stub, text):
+# def push_text(stub, text):
+#     try:
+#         timestamp = get_timestamp()
+#         request = streaming_pb2.PushTextRequest(text=text, time_stamp=timestamp)
+#         response = stub.PushText(request)
+#         return response.request_status, timestamp
+#     except grpc.RpcError as e:
+#         return f"Error: {str(e)}", None
+
+async def handle_text(websocket: WebSocket, stub: StreamingStub):
+    """Handle text messages sent by client."""
     try:
-        timestamp = get_timestamp()
-        request = streaming_pb2.PushTextRequest(text=text, time_stamp=timestamp)
-        response = stub.PushText(request)
-        return response.request_status, timestamp
-    except grpc.RpcError as e:
-        return f"Error: {str(e)}", None
+        while True:
+            text = await websocket.receive_text()
+            await stub.PushText(PushTextRequest(text=text, time_stamp=""))
+    except WebSocketDisconnect:
+        print("Client disconnected from text handling.")
+    except Exception as e:
+        print(f"Text handling error: {e}")
+
+async def handle_images(websocket: WebSocket, stub: StreamingStub, queue: asyncio.Queue):
+    """Process image stream from gRPC and send via WebSocket."""
+    try:
+        async for response in stub.BatchPopImage(PopImageRequest(time_stamp="")):
+            if len(response.images) == 0:
+                continue
+            for image in response.images:
+                base64_image = base64.b64encode(image).decode('utf-8')
+                await queue.put(f"data:image/jpeg;base64,{base64_image}")
+    except WebSocketDisconnect:
+        print("Client disconnected from image handling.")
+    except Exception as e:
+        print(f"Image handling error: {e}")
+
+async def send_images(websocket: WebSocket, queue: asyncio.Queue):
+    """Send images from queue to WebSocket in a controlled manner (30 FPS)."""
+    try:
+        while True:
+            image_data = await queue.get()
+            await websocket.send_text(image_data)
+            await asyncio.sleep(1 / 60)  # Maintain ~30 FPS
+    except WebSocketDisconnect:
+        print("Client disconnected from send_images.")
+    except Exception as e:
+        print(f"Error in send_images: {e}")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket connection for real-time text and image streaming."""
     await websocket.accept()
-    stub = get_grpc_stub()
+    stub, channel = await get_grpc_stub()
+    queue = asyncio.Queue(maxsize=100)
 
-    pop_image_response = stub.PopImage(streaming_pb2.PopImageRequest(time_stamp=""))
+    text_task = asyncio.create_task(handle_text(websocket, stub))
+    image_task = asyncio.create_task(handle_images(websocket, stub, queue))
+    send_task = asyncio.create_task(send_images(websocket, queue))
+
     try:
-        while True:
-            # Receive text from the client
-            text = await websocket.receive_text()
-            # status,time_stamp = push_text(stub, text)
-            print(text)
-            # Push text to gRPC service
-            push_image_response = stub.PushText(streaming_pb2.PushTextRequest(text=text, time_stamp=""))
-            print(push_image_response)
-            # Start receiving images
-            # for response in pop_image_response:
-            #     if response.image:
-            #         # Convert bytes to base64
-            #         base64_image = base64.b64encode(response.image).decode('utf-8')
-            #         await websocket.send_text(f"data:image/jpeg;base64,{base64_image}")
-
+        done, pending = await asyncio.wait(
+            [text_task, image_task, send_task], return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in pending:
+            task.cancel()
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"WebSocket error: {e}")
     finally:
-        print("closed")
         await websocket.close()
+        await channel.close()
 
 
 def recognize_and_send():
