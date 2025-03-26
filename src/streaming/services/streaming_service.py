@@ -60,6 +60,8 @@ class StreamingBaseService(streaming_pb2_grpc.StreamingServicer):
         while True:
             if not self.frame_queue.empty():
                 yield streaming_pb2.PopFrameResponse(request_status="Success", frame=self.frame_queue.get())
+            else:
+                yield streaming_pb2.PopFrameResponse(request_status="Empty", frame=None)
 
     def PushImage(self, request, context):
         try:

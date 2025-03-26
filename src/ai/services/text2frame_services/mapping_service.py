@@ -114,20 +114,20 @@ class SimilaritySentence():
                     if len(similarities) > 0:
                         max_index = np.argmax(similarities)
                         frames = self.es.decode_frame(searched_result[max_index]["_source"]["frame"])
-                        self.has_default = False
+                        # self.has_default = False
                         return frames
                     else:
                         logger.warning("Corresponding word is not appropriate")
-                        self.has_default = True
-                        return self.default_frame["default"]
+                        # self.has_default = True
+                        # return self.default_frame["default"]
                 elif not self.has_default:
                     logger.error("Word is not contained in DB")
-                    self.has_default = True
-                    return self.default_frame["default"]
-        elif not self.has_default:
-            logger.error("Default")
-            self.has_default = True
-            return self.default_frame["default"]
+        #             self.has_default = True
+        #             return self.default_frame["default"]
+        # elif not self.has_default:
+        #     logger.error("Default")
+        #     self.has_default = True
+        #     return self.default_frame["default"]
 
     @processing_time
     def _detect_name(self) -> None:
@@ -161,7 +161,7 @@ class SimilaritySentence():
         new = re.sub(r'[ìíỉĩị]', 'i', new)
         new = re.sub(r'[òóỏõọ]', 'o', new)
         new = re.sub(r'[ồốổỗộô]', 'o', new)
-        new = re.sub(r'[ồốổỗộô]', 'o', new)
+        new = re.sub(r'[ờớởỡợơ]', 'o', new)
         new = re.sub(r'[ùúủũụ]', 'u', new)
         new = re.sub(r'[ừứửữựư]', 'ư', new)
         new = re.sub(r'[ỳýỷỹỵy]', 'y', new)

@@ -1,5 +1,6 @@
 import grpc
 import cv2
+import json
 import numpy as np
 from loguru import logger
 from threading import Thread
@@ -23,6 +24,10 @@ HAND_CONNECTIONS = np.array([
     (9, 10), (10, 11), (11, 12), (13, 14), (14, 15), (15, 16),
     (17, 18), (18, 19), (19, 20)
 ])
+
+DEFAULT_FRAME = [[[]]]
+with open(os.getenv("DEFAULT_CHARACTER_PATH")) as file:
+    DEFAULT_FRAME = np.array(json.load(file)["default"])
 
 import cv2
 import numpy as np
@@ -91,9 +96,10 @@ def send_image_into_streaming(stub, handle_concat_frame: HandleConcatFrame):
     while True:
         data = handle_concat_frame.pop()
         if data is None:
-            mem = None
-            continue
-        if is_similar_frame(mem, data) and handle_concat_frame.getLen() > 100:
+            # mem = None
+            # continue
+            data = DEFAULT_FRAME
+        if is_similar_frame(mem, data, threshold=1e-5):
             continue
         try:
             image_bytes = visualize_landmarks_minimal(data)
