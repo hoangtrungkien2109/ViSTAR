@@ -80,10 +80,8 @@
 <body>
     <div class="container">
         <div class="input-area">
-            {% if current_user.is_admin %}
             <textarea id="textInput" rows="4" placeholder="Enter text to send..." onkeypress="handleKeyPress(event)"></textarea>
             <button id="sendButton" onclick="sendText()">Send Text</button>
-            {% endif %}
             <button id="micButton" onclick="toggleMic()">🎤</button>
         </div>
         <div class="image-area">

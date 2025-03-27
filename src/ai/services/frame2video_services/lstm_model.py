@@ -14,7 +14,7 @@ def pad_tensor(tensor, target_length=300):
         return F.pad(tensor, (0, 0, 0, 0, 0, padding_size))
     else:
         # If the tensor is already the correct size or larger, return it as is
-        return tensor
+        return tensor[:,:target_length,:,:]
 
 # Check if CUDA is available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

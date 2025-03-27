@@ -69,8 +69,7 @@ def visualize_landmarks_minimal(array, target_height=480, target_width=720, line
     if not success:
         raise RuntimeError("Failed to encode image")
     return encoded_img.tobytes()
-
-
+          
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -93,28 +92,27 @@ def send_image_into_streaming(stub, handle_concat_frame: HandleConcatFrame):
         if data is None:
             mem = None
             continue
-        if is_similar_frame(mem, data) and handle_concat_frame.getLen() > 100:
-            continue
-        try:
-            image_bytes = visualize_landmarks_minimal(data)
-            batch.append(image_bytes)
-            frame_count += 1
+        # if is_similar_frame(mem, data) and handle_concat_frame.getLen() > 100:
+        #     continue
+        # try:
+        image_bytes = visualize_landmarks_minimal(data)
+        batch.append(image_bytes)
+        frame_count += 1
 
-            if len(batch) >= batch_size:
-                stub.BatchPushImage(streaming_pb2.BatchPushImageRequest(images=batch))  # Send batch
-                batch.clear()  # Clear batch after sending
+        if len(batch) >= batch_size:
+            stub.BatchPushImage(streaming_pb2.BatchPushImageRequest(images=batch))  # Send batch
+            batch.clear()  # Clear batch after sending
 
-            # Log every second
-            elapsed_time = time.time() - start_time
-            if elapsed_time >= 1.0:
-                logger.info(f"Images sent in 1 second: {frame_count}")
-                frame_count = 0
-                start_time = time.time()
-        except Exception as e:
-            logger.error(f"Error sending image: {e}")
+        # Log every second
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= 1.0:
+            logger.info(f"Images sent in 1 second: {frame_count}")
+            frame_count = 0
+            start_time = time.time()
+        # except Exception as e:
+        #     logger.error(f"Error sending image: {e}")
 
         mem = data
-
 
 def is_similar_frame(frame1, frame2, threshold=0.1):
     return False if frame1 is None or frame2 is None else np.linalg.norm(frame1 - frame2) < threshold
@@ -127,11 +125,10 @@ def run():
         send_image_thread.start()
         for response in pop_frame_response:
             if response.request_status == "Success":
-                try:
-                    frames = matrix_list_to_numpy(response.frame)
-                    handle_concat_frame.push_into_process_queue(frames)
-                except Exception as e:
-                    logger.error(f"Error processing received frame: {e}")
+                frames = matrix_list_to_numpy(response.frame)
+                logger.info(f"Received frame of shape {frames.shape}")
+                handle_concat_frame.push_into_process_queue(frames)
+               
 
 if __name__ == "__main__":
     run()
