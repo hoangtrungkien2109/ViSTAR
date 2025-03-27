@@ -52,6 +52,8 @@ class SimilaritySentence():
         try:
             with open(default_dict_path, 'r') as f:
                 self.default_frame = json.load(f)
+                self.default_frame["default"] = np.array(self.default_frame["default"])/1000.0
+                self.default_frame["default"] = self.default_frame["default"].tolist()
                 logger.info(f"Default character: {self.default_frame.keys()}")
         except FileNotFoundError as e:
             raise e
@@ -83,6 +85,7 @@ class SimilaritySentence():
 
     @processing_time
     def get_frame(self, similarity_threshold = 0.5) -> List[np.ndarray]:
+        logger.warning(len(self.word_queue))
         if len(self.word_queue) > 0:
             current_word = self.word_queue.pop()
             if current_word.is_name == True:
@@ -116,15 +119,15 @@ class SimilaritySentence():
                         frames = self.es.decode_frame(searched_result[max_index]["_source"]["frame"])
                         # self.has_default = False
                         return frames
-                    else:
-                        logger.warning("Corresponding word is not appropriate")
-                        # self.has_default = True
-                        # return self.default_frame["default"]
-                elif not self.has_default:
-                    logger.error("Word is not contained in DB")
-        #             self.has_default = True
-        #             return self.default_frame["default"]
-        # elif not self.has_default:
+                    # else:
+                    #     logger.warning("Corresponding word is not appropriate")
+                    #     self.has_default = True
+                    #     return self.default_frame["default"]
+                # elif not self.has_default:
+                #     logger.error("Word is not contained in DB")
+                #     self.has_default = True
+                #     return self.default_frame["default"]
+        # elif self.has_default == False:
         #     logger.error("Default")
         #     self.has_default = True
         #     return self.default_frame["default"]
