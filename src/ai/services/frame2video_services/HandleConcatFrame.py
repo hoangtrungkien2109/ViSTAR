@@ -83,9 +83,10 @@ class HandleConcatFrame:
                 
                 self.processed_frame_queue.extend(result)
             else:
-                self.processed_frame_queue.extend(frames.tolist())
+                new_tail, self.num_default_frames = concatenate_frame(prev_frame=self.default_frame, post_frame=frames[0], rest=frames[1:])
+                self.processed_frame_queue.extend(new_tail.tolist())
         
-        except IndexError:
+        except IndexError as e:
             logger.error("Queue is empty")
             self.processed_frame_queue.extend(frames.tolist())
         except Exception as e:
