@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+
+<div class="min-h-screen flex flex-col items-center justify-center bg-gray-100">
+    <div class="w-full max-w-4xl mx-auto p-4">
+        <!-- Camera Section -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-4 text-center">
+                <div class="flex justify-center">
+                    <img src="{{ url_for('video_feed_stt') }}" id="video-stream" alt="Video stream"
+                         class="rounded-lg border border-gray-300 max-w-full h-auto">
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons Section -->
+        <div class="flex justify-center space-x-4 mt-6">
+            <button class="convert-btn px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                    id="convert-btn">Convert</button>
+            <a href="/" class="convert-btn px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition">Switch</a>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+<!--{#    <script>#}-->
+<!--{#        const video = document.getElementById('video');#}-->
+<!--{#        const canvas = document.getElementById('canvas');#}-->
+<!--{#        const resultText = document.getElementById('result-text');#}-->
+<!--{#        const context = canvas.getContext('2d');#}-->
+<!--{##}-->
+<!--{#        // Truy cập camera#}-->
+<!--{#        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {#}-->
+<!--{#            navigator.mediaDevices.getUserMedia({ video: true })#}-->
+<!--{#                .then(function(stream) {#}-->
+<!--{#                    video.srcObject = stream;#}-->
+<!--{#                })#}-->
+<!--{#                .catch(function(err) {#}-->
+<!--{#                    alert("Camera access is not supported or blocked by the browser.");#}-->
+<!--{#                });#}-->
+<!--{#        } else {#}-->
+<!--{#            alert("Your browser does not support accessing the camera.");#}-->
+<!--{#        }#}-->
+<!--{##}-->
+<!--{#        // Xử lý nút Convert#}-->
+<!--{#        document.getElementById('convert-btn').addEventListener('click', function() {#}-->
+<!--{#            // Vẽ video lên canvas#}-->
+<!--{#            canvas.width = video.videoWidth;#}-->
+<!--{#            canvas.height = video.videoHeight;#}-->
+<!--{#            context.drawImage(video, 0, 0, canvas.width, canvas.height);#}-->
+<!--{##}-->
+<!--{#            // Lấy dữ liệu ảnh từ canvas (Base64)#}-->
+<!--{#            const imageData = canvas.toDataURL('image/png');#}-->
+<!--{##}-->
+<!--{#            // Gửi hình ảnh đến server#}-->
+<!--{#            fetch('/convert_sign_to_text', {#}-->
+<!--{#                method: 'POST',#}-->
+<!--{#                headers: {#}-->
+<!--{#                    'Content-Type': 'application/json'#}-->
+<!--{#                },#}-->
+<!--{#                body: JSON.stringify({ image: imageData })#}-->
+<!--{#            })#}-->
+<!--{#            .then(response => response.json())#}-->
+<!--{#            .then(data => {#}-->
+<!--{#                // Hiển thị kết quả chuyển đổi#}-->
+<!--{#                resultText.value = data.text;#}-->
+<!--{#            })#}-->
+<!--{#            .catch(error => {#}-->
+<!--{#                console.error('Error during conversion:', error);#}-->
+<!--{#            });#}-->
+<!--{#        });#}-->
+<!--{#    </script>#}-->
+
+<!--<script>-->
+<!--    // Function to fetch action from the server periodically-->
+<!--    function fetchAction() {-->
+<!--        fetch('/get_action')-->
+<!--            .then(response => response.json())-->
+<!--            .then(data => {-->
+<!--                console.log('Fetched action:', data.action);-->
+<!--                // Update the result area with the fetched action-->
+<!--                document.getElementById('result-text').innerText = data.action;-->
+<!--            })-->
+<!--            .catch(error => console.error('Error fetching action:', error));-->
+<!--    }-->
+
+<!--    // Fetch the action every 2 seconds-->
+<!--    setInterval(fetchAction, 2000);-->
+<!--</script>-->
+</body>
+</html>
+{% endblock %}

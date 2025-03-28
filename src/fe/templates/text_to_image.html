@@ -78,18 +78,38 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="input-area">
+<div class="container">
+    <div class="input-area">
+        <!-- Toggle button (could be styled as an icon) -->
+        <button id="toggleInput" onclick="toggleInputArea()">≡</button>
+
+        <!-- Input area (initially hidden) -->
+        <div id="textInputArea" style="display: none;">
             <textarea id="textInput" rows="4" placeholder="Enter text to send..." onkeypress="handleKeyPress(event)"></textarea>
             <button id="sendButton" onclick="sendText()">Send Text</button>
-            <button id="micButton" onclick="toggleMic()">🎤</button>
         </div>
-        <div class="image-area">
-            <canvas id="imageCanvas"></canvas>
-            <div id="status" class="status">Not connected</div>
-            <div id="stats" class="stats"></div>
-        </div>
+
+        <!-- Mic button (always visible) -->
+        <button id="micButton" onclick="toggleMic()">🎤</button>
     </div>
+
+    <div class="image-area">
+        <canvas id="imageCanvas"></canvas>
+        <div id="status" class="status">Not connected</div>
+        <div id="stats" class="stats"></div>
+    </div>
+</div>
+
+<script>
+function toggleInputArea() {
+    const inputArea = document.getElementById('textInputArea');
+    if (inputArea.style.display === 'none') {
+        inputArea.style.display = 'block';
+    } else {
+        inputArea.style.display = 'none';
+    }
+}
+</script>
 
     <script>
         class ImageStreamManager {
@@ -279,7 +299,7 @@
         recognitionTimeout = setTimeout(() => {
             console.log('No input received for 1 second. Stopping recognition.');
             stopListening();
-        }, 10000);
+        }, 1000);
     };
 
         recognition.onerror = (event) => {

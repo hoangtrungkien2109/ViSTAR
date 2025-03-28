@@ -23,6 +23,8 @@ from src.streaming.pb.streaming_pb2 import PushTextRequest, PopImageRequest, Bat
 from src.streaming.pb.streaming_pb2_grpc import StreamingStub
 import speech_recognition as sr
 import time
+from tool import *
+from predict import *
 
 camera = cv2.VideoCapture(0)
 mp_holistic = mp.solutions.holistic # Holistic model
@@ -230,7 +232,7 @@ def welcome(request: Request):
         "request": request,
         "welcome_msg": "You are logged in!"
     })
-def draw_styled_landmarks(image, results):
+def draw_styled_landmarks2(image, results):
     mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_TESSELATION,
                              mp_drawing.DrawingSpec(color=(80,110,10), thickness=1, circle_radius=1),
                              mp_drawing.DrawingSpec(color=(80,256,121), thickness=1, circle_radius=1)
@@ -247,7 +249,7 @@ def draw_styled_landmarks(image, results):
                              mp_drawing.DrawingSpec(color=(245,117,66), thickness=2, circle_radius=4),
                              mp_drawing.DrawingSpec(color=(245,66,230), thickness=2, circle_radius=2)
                              )
-def mediapipe_detection(image, model):
+def mediapipe_detection2(image, model):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image.flags.writeable = False
     results = model.process(image)
@@ -255,7 +257,7 @@ def mediapipe_detection(image, model):
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     return image, results
 frame_idx = 0
-def extract_keypoints(results,idx):
+def extract_keypoints2(results,idx):
     frame_data = np.zeros((75, 3))
     if results.pose_landmarks:
         for idx, lm in enumerate(results.pose_landmarks.landmark):
@@ -291,11 +293,11 @@ def gen_frames():
 
                 break
 
-            image, results = mediapipe_detection(frame, holistic)
-            draw_styled_landmarks(image, results)
+            image, results = mediapipe_detection2(frame, holistic)
+            draw_styled_landmarks2(image, results)
             if capturing:
                 frame_idx += 1
-                keypoints = extract_keypoints(results,frame_idx)
+                keypoints = extract_keypoints2(results,frame_idx)
                 captured_keypoints.append(keypoints)
 
             # Encode the frame as JPEG
@@ -318,6 +320,13 @@ def data_page(request: Request):
 
     # Otherwise, render data.html
     return templates.TemplateResponse("data.html", {"request": request})
+
+
+@app.get("/STT", response_class=HTMLResponse)
+def data_page(request: Request):
+
+    # Otherwise, render data.html
+    return templates.TemplateResponse("sign_to_text.html", {"request": request})
 @app.get("/manage", response_class=HTMLResponse)
 def manage_page(request: Request, db: Session = Depends(get_db)):
     # Check if user is logged in
@@ -471,6 +480,9 @@ def delete_record(record_id: int, db: Session = Depends(get_db)):
 @app.get("/video_feed")
 def video_feed():
     return StreamingResponse(gen_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
+@app.get("/video_feed_stt")
+def video_feed_stt():
+    return StreamingResponse(predict_stt(), media_type="multipart/x-mixed-replace; boundary=frame")
 @app.post("/stop_camera")
 def stop_camera():
     global camera
