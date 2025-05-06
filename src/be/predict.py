@@ -24,15 +24,15 @@ predictions = []
 sign_buffer = []
 confidence_history = []
 EMA_option = True  # Set to False to use the old averaging method
-alpha = 0.5  # Smoothing factor for EMA (0 < alpha < 1)
+alpha = 0.6  # Smoothing factor for EMA (0 < alpha < 1)
 ema_predictions = None
 
-threshold = 0.5
+threshold = 0.6
 cap = cv2.VideoCapture(0)
 actions = np.array(
     ["Xin chao", "Tu Choi", "Le Halloween", "Ruc Ro", "May Man", "Nhan Vien", "Dia Chi", "San Truong", "Thay", "Toi",
      "Khong quen", "Nghi Hoc", "Tiep tan", "Ngay nay", "Cam on"
-        , "Xin loi", "Ky nang", "Hap dan", "Khong Dep", "Thuong Xuyen"])
+        , "Xin loi", "Ky nang", "Hap dan", "Thuong Xuyen"])
 # Set mediapipe model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import torch
@@ -168,7 +168,7 @@ model = TransformerClassifier(num_actions=num_actions, input_size=input_size, d_
                               num_encoder_layers=4, dim_feedforward=1024, dropout=0.2, max_seq_length=seq_len)
 
 # Load the trained weights
-model.load_state_dict(torch.load('n1_dict.pth', map_location=torch.device('cpu')))  # Use 'cuda' if on GPU
+model.load_state_dict(torch.load('n2_dict.pth', map_location=torch.device('cpu')))  # Use 'cuda' if on GPU
 
 # Move the model to the appropriate device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
