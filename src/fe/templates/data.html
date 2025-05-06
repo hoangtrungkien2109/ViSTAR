@@ -30,88 +30,73 @@
       </div>
 
       <!-- Video Feed -->
-      <div class="video-container" id="video-container" style="display: none;">
-        <img id="video-feed" src="" class="video-feed" alt="Live video feed">
+      <div class="video-container">
+        <img src="/video_feed" class="video-feed" alt="Live video feed">
       </div>
     </div>
   </div>
 </div>
 
-<script>
-  window.addEventListener('beforeunload', function() {
-    // Use navigator.sendBeacon for a reliable fire-and-forget request
-    navigator.sendBeacon('/stop_camera');
-  });
+    <script>
+            window.addEventListener('beforeunload', function() {
+            // Use navigator.sendBeacon for a reliable fire-and-forget request
+            navigator.sendBeacon('/stop_camera');
+        });
+    document.addEventListener('DOMContentLoaded', function() {
+      const startForm = document.getElementById('start-form');
+      const stopForm = document.getElementById('stop-form');
+      let autoStopTimer = null;
 
-  document.addEventListener('DOMContentLoaded', function() {
-    const startForm = document.getElementById('start-form');
-    const stopForm = document.getElementById('stop-form');
-    const videoContainer = document.getElementById('video-container');
-    const videoFeed = document.getElementById('video-feed');
-    let autoStopTimer = null;
+      startForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const formData = new FormData(startForm);
+        console.log("Start camera");
+        // Submit the start capture request
+        await fetch('/capture/start', {
+          method: 'POST',
+          body: formData
+        });
 
-    // Start the camera when the page loads
-    fetch('/start_camera', { method: 'POST' })
-      .then(response => response.json())
-      .then(data => {
-        console.log("Camera started:", data);
-        videoContainer.style.display = 'block';
-        videoFeed.src = '/video_feed';
-      })
-      .catch(error => {
-        console.error("Error starting the camera:", error);
+        // If auto_stop checkbox is checked, set timer based on user input
+        if (formData.get('auto_stop') === 'true') {
+          let autoStopTime = parseInt(document.getElementById('auto_stop_time').value);
+          if (isNaN(autoStopTime) || autoStopTime < 1) {
+            autoStopTime = 15; // default to 15 sec if invalid input
+          }
+          autoStopTimer = setTimeout(() => {
+            fetchStopCapture();
+          }, autoStopTime * 1000);
+        }
+
+        showToast("Capture started for word: " + formData.get('word'));
       });
 
-    startForm.addEventListener('submit', async function(event) {
-      event.preventDefault();
-      const formData = new FormData(startForm);
-
-      // Submit the start capture request
-      await fetch('/capture/start', {
-        method: 'POST',
-        body: formData
+      stopForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        if (autoStopTimer) {
+          clearTimeout(autoStopTimer);
+          autoStopTimer = null;
+        }
+        await fetchStopCapture();
       });
 
-      // If auto_stop checkbox is checked, set timer based on user input
-      if (formData.get('auto_stop') === 'true') {
-        let autoStopTime = parseInt(document.getElementById('auto_stop_time').value);
-        if (isNaN(autoStopTime) || autoStopTime < 1) {
-          autoStopTime = 15; // default to 15 sec if invalid input
+      async function fetchStopCapture() {
+        try {
+          const response = await fetch('/capture/stop', { method: 'POST' });
+          const data = await response.json();
+          console.log("Response from /capture/stop:", data);
+          if(data.status.trim().toLowerCase() === "capturing stopped"){
+            showToast("Tạo Dữ Liệu Thành Công!");
+            // Optionally, refresh the page or update the UI:
+            // window.location.reload();
+          } else {
+            showToast("Error: " + data.status);
+          }
+        } catch (error) {
+          console.error("Error during stop capture:", error);
+          showToast("An error occurred.");
         }
-        autoStopTimer = setTimeout(() => {
-          fetchStopCapture();
-        }, autoStopTime * 1000);
       }
-
-      showToast("Tạo Dữ Liệu Cho: " + formData.get('word'));
     });
-
-    stopForm.addEventListener('submit', async function(event) {
-      event.preventDefault();
-      if (autoStopTimer) {
-        clearTimeout(autoStopTimer);
-        autoStopTimer = null;
-      }
-      await fetchStopCapture();
-    });
-
-    async function fetchStopCapture() {
-      try {
-        const response = await fetch('/capture/stop', { method: 'POST' });
-        const data = await response.json();
-        console.log("Response from /capture/stop:", data);
-        if(data.status.trim().toLowerCase() === "capturing stopped"){
-          showToast("Tạo Dữ Liệu Thành Công!");
-          // window.location.reload();
-        } else {
-          showToast("Error: " + data.status);
-        }
-      } catch (error) {
-        console.error("Error during stop capture:", error);
-        showToast("An error occurred.");
-      }
-    }
-  });
-</script>
-
+    </script>
 {% endblock %}

@@ -24,11 +24,16 @@
 </div>
 
 
+    <script>
+            window.addEventListener('beforeunload', function() {
+            // Use navigator.sendBeacon for a reliable fire-and-forget request
+            navigator.sendBeacon('/stop_camera');
+        });
+            </script>>
 
 
 
 
-<!--{#    <script>#}-->
 <!--{#        const video = document.getElementById('video');#}-->
 <!--{#        const canvas = document.getElementById('canvas');#}-->
 <!--{#        const resultText = document.getElementById('result-text');#}-->
@@ -74,7 +79,7 @@
 <!--{#                console.error('Error during conversion:', error);#}-->
 <!--{#            });#}-->
 <!--{#        });#}-->
-<!--{#    </script>#}-->
+<!---->
 
 <!--<script>-->
 <!--    // Function to fetch action from the server periodically-->
