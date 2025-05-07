@@ -1,15 +1,15 @@
-import os
-import cv2
+# import os
+# import cv2
 import mediapipe as mp
 import numpy as np
-import math
-from tool import *
+# import math
+from src.be.tool import *
 
 # from gtts import gTTS
 # from playsound import playsound
-from tensorflow.keras.models import load_model
-import os
-import time
+# from tensorflow.keras.models import load_model
+# import os
+# import time
 import torch
 
 # model = load_model('model/30hope3.keras',safe_mode=False)
@@ -37,8 +37,8 @@ actions = np.array(
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
+# import torch.optim as optim
+# from torch.utils.data import DataLoader, TensorDataset
 import math
 
 
@@ -168,7 +168,7 @@ model = TransformerClassifier(num_actions=num_actions, input_size=input_size, d_
                               num_encoder_layers=4, dim_feedforward=1024, dropout=0.2, max_seq_length=seq_len)
 
 # Load the trained weights
-model.load_state_dict(torch.load('n1_dict.pth', map_location=torch.device('cpu')))  # Use 'cuda' if on GPU
+model.load_state_dict(torch.load('src/be/n2_dict.pth', map_location=torch.device('cpu')))  # Use 'cuda' if on GPU
 
 # Move the model to the appropriate device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

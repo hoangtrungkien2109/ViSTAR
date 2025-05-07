@@ -23,10 +23,8 @@ from src.streaming.pb.streaming_pb2 import PushTextRequest, PopImageRequest, Bat
 from src.streaming.pb.streaming_pb2_grpc import StreamingStub
 import speech_recognition as sr
 import time
-from tool import *
-from predict import *
-
-camera = cv2.VideoCapture(0)
+from src.be.tool import *
+from src.be.predict import *
 mp_holistic = mp.solutions.holistic # Holistic model
 mp_drawing = mp.solutions.drawing_utils # Drawing utilities
 app = FastAPI()
