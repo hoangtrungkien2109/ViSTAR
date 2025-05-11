@@ -13,7 +13,9 @@ import numpy as np
 import cv2
 import mediapipe as mp
 import asyncio
+from fastapi.concurrency import run_in_threadpool
 import base64
+from threading import Thread
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 import grpc
@@ -25,6 +27,11 @@ import speech_recognition as sr
 import time
 from tool import *
 from predict import *
+from gtts import gTTS
+import pyttsx3
+import io
+from io import BytesIO
+import pygame
 mp_holistic = mp.solutions.holistic # Holistic model
 mp_drawing = mp.solutions.drawing_utils # Drawing utilities
 app = FastAPI()
@@ -274,9 +281,33 @@ def extract_keypoints2(results,idx):
     else:
         frame_data[33 + 21:33 + 42] = 0
     return frame_data
+
+tts_playing = False
+
+
+def play_tts_async(text, lang='vi'):
+    global tts_playing
+    try:
+        tts_playing = True
+        tts = gTTS(text=text, lang=lang)
+        audio_bytes = BytesIO()
+        tts.write_to_fp(audio_bytes)
+        audio_bytes.seek(0)
+
+        pygame.mixer.music.load(audio_bytes)
+        pygame.mixer.music.play()
+
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)
+
+    except Exception as e:
+        print(f"Error in TTS: {e}")
+    finally:
+        tts_playing = False
 def predict_stt():
-    global sequence,sentence,ema_predictions
+    global sequence,sentence,ema_predictions,tts_playing
     camera = cv2.VideoCapture(0)
+    pygame.mixer.init()
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
         while camera.isOpened():
 
@@ -354,8 +385,10 @@ def predict_stt():
                     if avg_predictions[avg_pred_class] > threshold:
                         if actions[avg_pred_class] != sentence:
                             sentence = actions[avg_pred_class]
+                            sentence_tts = actions_tts[avg_pred_class]
                             print(f"New prediction: {sentence}")
-
+                            if not tts_playing:
+                                Thread(target=play_tts_async, args=(sentence_tts, 'vi')).start()
                         # Reset for the next prediction
                         sequence = []
                         if EMA_option:
