@@ -32,6 +32,12 @@ actions = np.array(
     ["Xin chao", "Tu Choi", "Le Halloween", "Ruc Ro", "May Man", "Nhan Vien", "Dia Chi", "San Truong", "Thay", "Toi",
      "Khong quen", "Nghi Hoc", "Tiep tan", "Ngay nay", "Cam on"
         , "Xin loi", "Ky nang", "Hap dan", "Thuong Xuyen"])
+actions_tts = np.array([
+    "Xin chào", "Từ chối", "Lễ Halloween", "Rực rỡ", "May mắn", "Nhân viên",
+    "Địa chỉ", "Sân trường", "Thầy", "Tôi", "Không quên", "Nghỉ học",
+    "Tiếp tân", "Ngày nay", "Cảm ơn", "Xin lỗi", "Kỹ năng", "Hấp dẫn",
+    "Thường xuyên"
+])
 # Set mediapipe model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import torch
