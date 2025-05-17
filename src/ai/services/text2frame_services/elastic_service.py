@@ -94,34 +94,40 @@ class ESEngine():
                 processed_files.append(_file)
         return processed_words, processed_files
 
-    def search(self, word: str, max_size: int = 5) -> list[dict]:
+    def search(self, word: str, max_size: int = 5, user_id: str = "default") -> list[dict]:
         """Search similar words in elasticsearch"""
+        # search_body = {
+        #     "query": {
+        #         "fuzzy": {
+        #             "word": {
+        #                 "value": word,
+        #                 "fuzziness": "AUTO"
+        #             }
+        #         },
+        #         "match": {
+        #             "user_id": user_id
+        #         }
+        #     },
+        #     "size": max_size
+        # }
+        # result = self.es.search(index = "frame", body=search_body)
+        # if len(result["hits"]["hits"]) > 0:  # FIX: vì sao lại >0 mà không phải ==0
         search_body = {
             "query": {
-                "fuzzy": {
-                    "word": {
-                        "value": word,
-                        "fuzziness": "AUTO"
-                    }
+                "bool": {
+                    "must": [
+                        {"match": {"word": word}},
+                        {"match": {"user_id": user_id}}
+                    ]
                 }
-            },
-            "size": max_size
+            }
         }
         result = self.es.search(index = "frame", body=search_body)
-        if len(result["hits"]["hits"]) > 0:  # FIX: vì sao lại >0 mà không phải ==0
-            search_body = {
-                "query": {
-                    "match": {
-                        "word": word,
-                    }
-                },
-                "size": max_size
-            }
-        result = self.es.search(index = "frame", body=search_body)
+        logger.error(result["hits"]["hits"][0]["_source"]["user_id"])
         return result["hits"]["hits"]
 
     def upload_to_es(self, mapping_path: str, data_path: str,
-                     json_path: str | None = None):
+                     json_path: str | None = None, user_id: str = "default"):
         """Upload words and their frames into elasticsearch database"""
         words, file_names = self._process_data(mapping_path)
         frame_chunks = []
@@ -141,6 +147,7 @@ class ESEngine():
                         "word": word,
                         "frame": self._encode_frame(frame),
                         "file_name": file_name,
+                        "user_id": user_id
                     }
                 }
             )
