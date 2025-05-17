@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 import os
-import datetime
 from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, LargeBinary
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from passlib.context import CryptContext
@@ -11,6 +10,7 @@ from typing import Optional
 from fastapi.staticfiles import StaticFiles
 import numpy as np
 import cv2
+from concurrent.futures import ThreadPoolExecutor
 import mediapipe as mp
 import asyncio
 import base64
@@ -450,25 +450,47 @@ def manage_page(request: Request, db: Session = Depends(get_db)):
     )
 
 
+POSE_CONNECTIONS = [
+    (0, 1), (1, 2), (2, 3), (3, 7), (0, 4), (4, 5), (5, 6), (6, 8),
+    (9, 10), (11, 12), (11, 13), (13, 15), (15, 17), (12, 14), (14, 16), (16, 18),
+    (23, 24), (24, 26), (26, 28), (28, 32), (23, 25), (25, 27), (27, 29), (29, 31)
+]
+
+HAND_CONNECTIONS = [
+    (0, 1), (1, 2), (2, 3), (3, 4), (5, 6), (6, 7), (7, 8), (9, 10), (10, 11), (11, 12),
+    (13, 14), (14, 15), (15, 16), (17, 18), (18, 19), (19, 20)
+]
+
 def visualize_landmarks_to_video(array, output_filename='output.webm',
-                                 target_height=480, target_width=720,
-                                 fps=30):
-    # Check that the array has shape (num_frames, 75, 3)
+                                 target_height=480, target_width=720, fps=30, line_thickness=1):
     if array.ndim != 3 or array.shape[1:] != (75, 3):
         raise ValueError(f"Expected shape (N,75,3), got {array.shape}")
 
-    # Use VP8 codec for WebM output
     fourcc = cv2.VideoWriter_fourcc(*'VP80')
     out = cv2.VideoWriter(output_filename, fourcc, fps, (target_width, target_height))
 
-    # Loop through each frame and draw landmarks.
     for frame in array:
-        # Create a blank image.
         img = np.zeros((target_height, target_width, 3), dtype=np.uint8)
-        # Scale landmark coordinates to image dimensions.
         points = (frame[:, :2] * [target_width, target_height]).astype(np.int32)
-        for point in points:
-            cv2.circle(img, tuple(point), 1, (0, 255, 0), -1)
+
+        def draw_landmarks(landmarks, color):
+            valid = ~np.isnan(landmarks[:, 0])
+            for x, y in landmarks[valid]:
+                cv2.circle(img, (x, y), 4, color, -1)
+
+        def draw_connections(landmarks, connections, color):
+            valid_conns = [(s, e) for s, e in connections if not np.isnan(landmarks[[s, e]]).any()]
+            for s, e in valid_conns:
+                cv2.line(img, tuple(landmarks[s]), tuple(landmarks[e]), color, line_thickness)
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            executor.submit(draw_landmarks, points[:33], (0, 255, 0))
+            executor.submit(draw_connections, points[:33], POSE_CONNECTIONS, (0, 255, 0))
+            executor.submit(draw_landmarks, points[33:54], (255, 0, 0))
+            executor.submit(draw_connections, points[33:54], HAND_CONNECTIONS, (255, 0, 0))
+            executor.submit(draw_landmarks, points[54:], (0, 0, 255))
+            executor.submit(draw_connections, points[54:], HAND_CONNECTIONS, (0, 0, 255))
+
         out.write(img)
 
     out.release()
@@ -489,6 +511,9 @@ def review_record(record_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         return HTMLResponse(content=f"Error reshaping array: {e}", status_code=500)
 
+    # Unquantize the array
+    keypoints_array = (keypoints_array / 1000)
+    
     # Generate a video from the array.
     # This function writes the video file to disk.
     video_filename = f"review_{record_id}.webm"
@@ -596,6 +621,7 @@ def stop_camera():
         cap.release()
         cap = None
     return {"status": "Camera stopped"}
+
 @app.post("/start_camera")
 def start_camera():
     global camera
@@ -603,7 +629,8 @@ def start_camera():
         camera = cv2.VideoCapture(0)
     return {"status": "Camera started"}
 @app.post("/capture/start")
-def capture_start(    request: Request,
+def capture_start(
+    request: Request,
     word: str = Form(...),
     db: Session = Depends(get_db)
 ):
@@ -642,6 +669,11 @@ def capture_stop(db: Session = Depends(get_db)):
 
     # Convert list to numpy array
     keypoints_array = np.array(captured_keypoints)
+
+    # quantize the numpy array to int16
+    keypoints_array *= 1000
+    keypoints_array = keypoints_array.astype(np.int16)
+    
 
     # Build filename
     filename = f"{current_word + str(current_user_id)}.npy"
