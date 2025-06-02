@@ -25,6 +25,8 @@ import speech_recognition as sr
 import time
 from src.be.tool import *
 from src.be.predict import *
+from src.ai.services.text2frame_services.elastic_service import ESEngine
+
 mp_holistic = mp.solutions.holistic # Holistic model
 mp_drawing = mp.solutions.drawing_utils # Drawing utilities
 app = FastAPI()
@@ -47,10 +49,15 @@ Base = declarative_base()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+elastic_service: ESEngine = ESEngine()
+
 capturing = False
 captured_keypoints = []
 current_word = None
 current_user_id = None
+camera = None
+frame_idx = 0
+
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
@@ -380,40 +387,51 @@ def predict_stt():
                         b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n'
                 )
 def gen_frames():
-    global frame_idx
-    camera = cv2.VideoCapture(0)
-    """
-    Generator function that:
-      1. Captures frames from the webcam.
-      2. Uses Mediapipe to detect hand landmarks.
-      3. Draws the landmarks onto the frame.
-      4. Encodes the frame as JPEG and yields it for streaming.
-    """
-    with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
-        while True:
-            success, frame = camera.read()
-            if not success or frame is None:
+    global camera, frame_idx
+    try:
+        # Only initialize camera if it's not already open
+        if camera is None or not camera.isOpened():
+            camera = cv2.VideoCapture(0)
+            if not camera.isOpened():
+                yield (b'--frame\r\n'
+                      b'Content-Type: text/plain\r\n\r\n'
+                      b'Camera not available\r\n')
+                return
 
-                break
+        with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+            while camera is not None and camera.isOpened():
+                success, frame = camera.read()
+                if not success or frame is None:
+                    print("Failed to get frame from camera")
+                    # Small delay before retrying
+                    time.sleep(0.1)
+                    continue
 
-            image, results = mediapipe_detection2(frame, holistic)
-            draw_styled_landmarks2(image, results)
-            if capturing:
-                frame_idx += 1
-                keypoints = extract_keypoints2(results,frame_idx)
-                captured_keypoints.append(keypoints)
+                image, results = mediapipe_detection2(frame, holistic)
+                draw_styled_landmarks2(image, results)
+                
+                if capturing:
+                    frame_idx += 1
+                    keypoints = extract_keypoints2(results, frame_idx)
+                    captured_keypoints.append(keypoints)
 
-            # Encode the frame as JPEG
-            ret, buffer = cv2.imencode('.jpg', image)
-            if not ret:
-                continue  # If encoding fails, skip this frame
+                # Encode the frame as JPEG
+                ret, buffer = cv2.imencode('.jpg', image)
+                if not ret:
+                    continue  # If encoding fails, skip this frame
 
-            # Build a 'multipart/x-mixed-replace' response
-            frame_bytes = buffer.tobytes()
-            yield (
-                b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n'
-            )
+                # Build a 'multipart/x-mixed-replace' response
+                frame_bytes = buffer.tobytes()
+                yield (
+                    b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n'
+                )
+                
+    except Exception as e:
+        print(f"Error in gen_frames: {e}")
+        yield (b'--frame\r\n'
+              b'Content-Type: text/plain\r\n\r\n'
+              b'Error: ' + str(e).encode() + b'\r\n')
 
 @app.get("/data", response_class=HTMLResponse)
 def data_page(request: Request):
@@ -504,7 +522,9 @@ def review_record(record_id: int, db: Session = Depends(get_db)):
     record = db.query(DataTable).filter(DataTable.id == record_id).first()
     if not record:
         return HTMLResponse(content="Record not found", status_code=404)
-    keypoints_array = np.frombuffer(record.numpy_array, dtype=np.float64)
+    print("Reviewing record: ", record.numpy_array)
+    keypoints_array = np.frombuffer(record.numpy_array, dtype=np.int16)
+    print("Keypoints array shape:", keypoints_array.shape)
     n_frames = keypoints_array.size // (75 * 3)
     try:
         keypoints_array = keypoints_array.reshape((n_frames, 75, 3))
@@ -512,7 +532,7 @@ def review_record(record_id: int, db: Session = Depends(get_db)):
         return HTMLResponse(content=f"Error reshaping array: {e}", status_code=500)
 
     # Unquantize the array
-    keypoints_array = (keypoints_array / 1000)
+    keypoints_array = (keypoints_array / 1000).astype(np.float64)
     
     # Generate a video from the array.
     # This function writes the video file to disk.
@@ -611,23 +631,37 @@ def video_feed():
 @app.get("/video_feed_stt")
 def video_feed_stt():
     return StreamingResponse(predict_stt(), media_type="multipart/x-mixed-replace; boundary=frame")
-@app.post("/stop_camera")
-def stop_camera():
-    global camera,cap
-    if camera.isOpened():
-        camera.release()
-        camera = None
-    if cap.isOpened():
-        cap.release()
-        cap = None
-    return {"status": "Camera stopped"}
 
 @app.post("/start_camera")
 def start_camera():
     global camera
-    if camera is None or not camera.isOpened():
-        camera = cv2.VideoCapture(0)
-    return {"status": "Camera started"}
+    try:
+        if camera is None or not camera.isOpened():
+            camera = cv2.VideoCapture(0)
+            if not camera.isOpened():
+                return {"status": "error", "message": "Failed to open camera"}
+        return {"status": "success", "message": "Camera started"}
+    except Exception as e:
+        return {"status": "error", "message": f"Error starting camera: {str(e)}"}
+
+@app.post("/stop_camera")
+def stop_camera():
+    global camera
+    try:
+        if camera is not None and camera.isOpened():
+            camera.release()
+            camera = None
+        return {"status": "success", "message": "Camera stopped"}
+    except Exception as e:
+        return {"status": "error", "message": f"Error stopping camera: {str(e)}"}
+
+@app.on_event("shutdown")
+def shutdown_event():
+    global camera
+    if camera is not None and camera.isOpened():
+        camera.release()
+        print("Camera released during shutdown")
+        
 @app.post("/capture/start")
 def capture_start(
     request: Request,
@@ -673,14 +707,16 @@ def capture_stop(db: Session = Depends(get_db)):
     # quantize the numpy array to int16
     keypoints_array *= 1000
     keypoints_array = keypoints_array.astype(np.int16)
-    
 
-    # Build filename
+    # Build filename / Save it
     filename = f"{current_word + str(current_user_id)}.npy"
     # Save under a subfolder, e.g. "data_npy" if you want
     # For simplicity, just save in current directory
     array_bytes = keypoints_array.tobytes()
     np.save(filename, keypoints_array)
+    
+    # Save data to elasticsearch
+    elastic_service.upload_one_to_es(frame=keypoints_array, file_name=filename, user_id=current_user_id, word=current_word)
 
     # Insert record into DB
     db_record = DataTable(

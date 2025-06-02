@@ -31,72 +31,117 @@
 
       <!-- Video Feed -->
       <div class="video-container">
-        <img src="/video_feed" class="video-feed" alt="Live video feed">
+        <img id="video-feed" src="" class="video-feed" alt="Live video feed">
       </div>
     </div>
   </div>
 </div>
 
-    <script>
-            window.addEventListener('beforeunload', function() {
-            // Use navigator.sendBeacon for a reliable fire-and-forget request
-            navigator.sendBeacon('/stop_camera');
-        });
-    document.addEventListener('DOMContentLoaded', function() {
-      const startForm = document.getElementById('start-form');
-      const stopForm = document.getElementById('stop-form');
-      let autoStopTimer = null;
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const startForm = document.getElementById('start-form');
+    const stopForm = document.getElementById('stop-form');
+    const videoFeed = document.getElementById('video-feed');
+    let autoStopTimer = null;
+    
+    // Initialize camera on page load
+    initCamera();
+    
+    function initCamera() {
+      // Start the camera and set the video feed source
+      fetch('/start_camera', {
+        method: 'POST'
+      }).then(response => {
+        if (response.ok) {
+          videoFeed.src = "/video_feed";
+        } else {
+          console.error("Failed to start camera");
+        }
+      }).catch(error => {
+        console.error("Error starting camera:", error);
+      });
+    }
+    
+    // Ensure camera is stopped when the page is unloaded
+    window.addEventListener('beforeunload', function() {
+      navigator.sendBeacon('/stop_camera');
+    });
 
-      startForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        const formData = new FormData(startForm);
-        console.log("Start camera");
+    startForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const formData = new FormData(startForm);
+      console.log("Starting capture for word:", formData.get('word'));
+      
+      try {
         // Submit the start capture request
-        await fetch('/capture/start', {
+        const response = await fetch('/capture/start', {
           method: 'POST',
           body: formData
         });
-
+        
+        if (!response.ok) {
+          throw new Error('Failed to start capture');
+        }
+        
         // If auto_stop checkbox is checked, set timer based on user input
         if (formData.get('auto_stop') === 'true') {
           let autoStopTime = parseInt(document.getElementById('auto_stop_time').value);
           if (isNaN(autoStopTime) || autoStopTime < 1) {
             autoStopTime = 15; // default to 15 sec if invalid input
           }
+          showToast(`Capture will automatically stop in ${autoStopTime} seconds`);
           autoStopTimer = setTimeout(() => {
             fetchStopCapture();
           }, autoStopTime * 1000);
         }
 
         showToast("Capture started for word: " + formData.get('word'));
-      });
-
-      stopForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        if (autoStopTimer) {
-          clearTimeout(autoStopTimer);
-          autoStopTimer = null;
-        }
-        await fetchStopCapture();
-      });
-
-      async function fetchStopCapture() {
-        try {
-          const response = await fetch('/capture/stop', { method: 'POST' });
-          const data = await response.json();
-          console.log("Response from /capture/stop:", data);
-          if(data.status.trim().toLowerCase() === "capturing stopped"){
-            showToast("Tạo Dữ Liệu Thành Công!");
-            // Optionally, refresh the page or update the UI:
-            // window.location.reload();
-          } else {
-            showToast("Error: " + data.status);
-          }
-        } catch (error) {
-          console.error("Error during stop capture:", error);
-          showToast("An error occurred.");
-        }
+      } catch (error) {
+        console.error("Error during start capture:", error);
+        showToast("Failed to start capture. Please try again.");
       }
     });
-    </script>
+
+    stopForm.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      if (autoStopTimer) {
+        clearTimeout(autoStopTimer);
+        autoStopTimer = null;
+      }
+      await fetchStopCapture();
+    });
+
+    async function fetchStopCapture() {
+      try {
+        const response = await fetch('/capture/stop', { method: 'POST' });
+        if (!response.ok) {
+          throw new Error('Failed to stop capture');
+        }
+        
+        const data = await response.json();
+        console.log("Response from /capture/stop:", data);
+        
+        if(data.status && data.status.trim().toLowerCase() === "capturing stopped"){
+          showToast("Data Capture Successful!");
+        } else {
+          showToast(data.status || "No data recorded");
+        }
+      } catch (error) {
+        console.error("Error during stop capture:", error);
+        showToast("An error occurred while stopping capture.");
+      }
+    }
+    
+    // You'll need to implement this function in your base template
+    function showToast(message) {
+      console.log("Toast message:", message);
+      // If you have a toast notification system
+      if (window.showToast) {
+        window.showToast(message);
+      } else {
+        alert(message);
+      }
+    }
+  });
+</script>
 {% endblock %}

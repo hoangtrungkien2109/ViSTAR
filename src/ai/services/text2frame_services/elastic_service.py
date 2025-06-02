@@ -24,6 +24,8 @@ class ESEngine():
     def __init__(self, index_name: str = "frame"):
         self.index_name = index_name
         self.es = Elasticsearch("http://localhost:9200", request_timeout=60)
+        self.es.indices.put_settings(index="frame", settings={"index.blocks.read_only_allow_delete": None})
+     
         if not self.es.indices.exists(index=self.index_name):
             self.es.indices.create(index=self.index_name)
             logger.warning("INDEX CREATED")
@@ -95,36 +97,36 @@ class ESEngine():
         return processed_words, processed_files
 
     def search(self, word: str, max_size: int = 5, user_id: str = "default") -> list[dict]:
-        """Search similar words in elasticsearch"""
-        # search_body = {
-        #     "query": {
-        #         "fuzzy": {
-        #             "word": {
-        #                 "value": word,
-        #                 "fuzziness": "AUTO"
-        #             }
-        #         },
-        #         "match": {
-        #             "user_id": user_id
-        #         }
-        #     },
-        #     "size": max_size
-        # }
-        # result = self.es.search(index = "frame", body=search_body)
-        # if len(result["hits"]["hits"]) > 0:  # FIX: vì sao lại >0 mà không phải ==0
-        search_body = {
-            "query": {
-                "bool": {
-                    "must": [
-                        {"match": {"word": word}},
-                        {"match": {"user_id": user_id}}
-                    ]
-                }
+        """Search similar words in Elasticsearch with priority to admin"""
+        def _search_by_user(user_id):
+            body = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"match": {"word": word}},
+                            {"match": {"user_id": user_id}}
+                        ]
+                    }
+                },
+                "size": max_size
             }
-        }
-        result = self.es.search(index = "frame", body=search_body)
-        logger.error(result["hits"]["hits"][0]["_source"]["user_id"])
-        return result["hits"]["hits"]
+            return self.es.search(index="frame", body=body)["hits"]["hits"]
+
+        # Search admin first
+        admin_hits = _search_by_user("2")
+
+        # If admin found results, check for default
+        if admin_hits:
+            default_hits = _search_by_user("default")
+            # Compare _id of results
+            admin_ids = {hit["_id"] for hit in admin_hits}
+            default_ids = {hit["_id"] for hit in default_hits}
+            if admin_ids == default_ids:
+                return admin_hits  # identical -> return only admin
+            return admin_hits + [hit for hit in default_hits if hit["_id"] not in admin_ids]
+        else:
+            return _search_by_user("default")
+
 
     def upload_to_es(self, mapping_path: str, data_path: str,
                      json_path: str | None = None, user_id: str = "default"):
@@ -170,6 +172,30 @@ class ESEngine():
             with open(json_path, "a") as f:
                 for doc in data:
                     json.dump(doc, f)
+    
+    def upload_one_to_es(self, 
+                    word: str,
+                    file_name: str,
+                    frame: np.ndarray,
+                    user_id):
+        """Upload words and their frames into elasticsearch database"""
+        data ={
+                "_index": "frame",
+                "_id": str(uuid.uuid4()),
+                "_source": {
+                    "word": word,
+                    "frame": self._encode_frame(frame.tolist()),
+                    "file_name": file_name,
+                    "user_id": user_id
+                }
+        }
+        try:
+            print(data)
+            success, errors = helpers.bulk(self.es, [data], raise_on_error=False, stats_only=False)
+            print(f"Success: {success}, Errors: {errors}")
+        except Exception as e:
+            print(f"Bulk insert failed: {e}")
+        logger.info("Data pushed to elastic successfully")
 
     def clear_data_es(self):
         """Clear all data from elasticsearch"""
@@ -194,5 +220,11 @@ class ESEngine():
 
 if __name__ == "__main__":
     es: ESEngine = ESEngine()
-    es.upload_to_es()
-    print(es.search("kiến"))
+    result = es.search(word="hien",user_id="2")
+    
+    for hit in result:
+        print("Word:", hit["_source"]["word"], 
+              "\nfilename:", hit["_source"]["file_name"],
+              "\nuser_id:", hit["_source"]["user_id"])
+        # print("Frame:", es.decode_frame(hit["_source"]["frame"]))
+    
