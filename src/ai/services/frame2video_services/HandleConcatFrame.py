@@ -71,7 +71,7 @@ class HandleConcatFrame:
                 frames = frames[p.flatten() == 1]
             
             # Remove the default tail if it exists.
-            if len(self.processed_frame_queue) > 0 and np.allclose(np.array(self.processed_frame_queue[-1]), self.default_frame):
+            if len(self.processed_frame_queue) > 0 and np.array_equal(self.processed_frame_queue[-1], self.default_frame):
                 self.remove_default_frame(self.num_default_frames)
             
             if len(self.processed_frame_queue) > 0:

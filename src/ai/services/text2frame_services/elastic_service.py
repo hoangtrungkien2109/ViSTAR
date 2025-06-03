@@ -113,7 +113,7 @@ class ESEngine():
             return self.es.search(index="frame", body=body)["hits"]["hits"]
 
         # Search admin first
-        admin_hits = _search_by_user("2")
+        admin_hits = _search_by_user(user_id=user_id)
 
         # If admin found results, check for default
         if admin_hits:

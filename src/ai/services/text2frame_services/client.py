@@ -5,6 +5,8 @@ from loguru import logger
 import src.streaming.pb.streaming_pb2 as streaming_pb2
 import src.streaming.pb.streaming_pb2_grpc as streaming_pb2_grpc
 from src.ai.services.text2frame_services.mapping_service import SimilaritySentence
+import requests
+
 load_dotenv()
 
 def run():
@@ -23,7 +25,10 @@ def run():
                 ss.push_word(response.text)
                 logger.info("Processing text...")
 
-            frames = ss.get_frame()
+            response = requests.get("http://localhost:8000/me/user_id")
+            user_id = response.json()["user_id"]
+
+            frames = ss.get_frame(user_id=user_id)
             if frames:
                 frame_matrix_list = streaming_pb2.MatrixList(
                     matrix=[

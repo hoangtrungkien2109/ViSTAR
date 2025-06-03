@@ -84,7 +84,7 @@ class SimilaritySentence():
                 self.ner_list.pointer += 1
 
     @processing_time
-    def get_frame(self, similarity_threshold = 0.5) -> List[np.ndarray]:
+    def get_frame(self, similarity_threshold = 0.5, user_id="2") -> List[np.ndarray]:
         logger.warning(len(self.word_queue))
         if len(self.word_queue) > 0:
             current_word = self.word_queue.pop()
@@ -98,7 +98,7 @@ class SimilaritySentence():
                 return frames
             else:
                 # Search for the corresponding word
-                searched_result = self.es.search(word=current_word.segment)
+                searched_result = self.es.search(word=current_word.segment, user_id=user_id)
                 logger.debug(f"CURRENT: {current_word.segment}")
                 if len(searched_result) > 0:
                     logger.success("Sending frame to streaming")

@@ -29,8 +29,6 @@ from src.be.tool import *
 from src.be.predict import *
 from src.ai.services.text2frame_services.elastic_service import ESEngine
 
-from tool import *
-from predict import *
 from gtts import gTTS
 import pyttsx3
 import io
@@ -864,6 +862,10 @@ def recognize_and_send():
             except:
                 continue
             time.sleep(1)
+
+@app.get("/me/user_id")
+def get_user_id():
+    return {"user_id": current_user_id}
 
 if __name__ == "__main__":
     import uvicorn
