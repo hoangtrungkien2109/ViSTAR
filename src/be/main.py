@@ -126,6 +126,9 @@ def get_db():
 # -----------------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
+def register_form(request: Request):
+    return templates.TemplateResponse("about.html", {"request": request})
+@app.get("/TTI", response_class=HTMLResponse)
 def home(request: Request):
     """ Public home page. """
     return templates.TemplateResponse("text_to_image.html", {"request": request})
@@ -409,7 +412,7 @@ def gen_frames():
 
                 image, results = mediapipe_detection2(frame, holistic)
                 draw_styled_landmarks2(image, results)
-                
+
                 if capturing:
                     frame_idx += 1
                     keypoints = extract_keypoints2(results, frame_idx)
@@ -426,7 +429,7 @@ def gen_frames():
                     b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n'
                 )
-                
+
     except Exception as e:
         print(f"Error in gen_frames: {e}")
         yield (b'--frame\r\n'
@@ -533,7 +536,7 @@ def review_record(record_id: int, db: Session = Depends(get_db)):
 
     # Unquantize the array
     keypoints_array = (keypoints_array / 1000).astype(np.float64)
-    
+
     # Generate a video from the array.
     # This function writes the video file to disk.
     video_filename = f"review_{record_id}.webm"
@@ -661,7 +664,7 @@ def shutdown_event():
     if camera is not None and camera.isOpened():
         camera.release()
         print("Camera released during shutdown")
-        
+
 @app.post("/capture/start")
 def capture_start(
     request: Request,
@@ -714,7 +717,7 @@ def capture_stop(db: Session = Depends(get_db)):
     # For simplicity, just save in current directory
     array_bytes = keypoints_array.tobytes()
     np.save(filename, keypoints_array)
-    
+
     # Save data to elasticsearch
     elastic_service.upload_one_to_es(frame=keypoints_array, file_name=filename, user_id=current_user_id, word=current_word)
 
