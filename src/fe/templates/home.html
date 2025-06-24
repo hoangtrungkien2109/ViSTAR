@@ -1,31 +1,50 @@
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto text-center">
-    <div class="card">
-        <div class="card-body py-12">
-            <h1 class="text-4xl font-bold mb-6">Welcome to ViSTAR</h1>
-            
-            <p class="text-gray-600 text-lg mb-8">
-                A powerful platform for sign language translation and recognition.
-            </p>
-
-            <div class="space-y-4">
-                <a href="/data" class="btn btn-primary block w-full max-w-xs mx-auto">
-                    Start Capturing
-                </a>
-                
-                {% if not user %}
-                    <a href="/login" class="btn btn-secondary block w-full max-w-xs mx-auto">
-                        Login to Manage Data
-                    </a>
-                {% else %}
-                    <a href="/manage" class="btn btn-secondary block w-full max-w-xs mx-auto">
-                        Manage Your Data
-                    </a>
-                {% endif %}
-            </div>
-        </div>
+<section class="relative bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 min-h-screen flex items-center justify-center">
+    <div class="max-w-4xl mx-auto py-24 px-6 text-center text-white">
+        <h1 class="text-5xl font-extrabold mb-6 drop-shadow-lg">Welcome to ViSTAR</h1>
+        <p class="text-xl mb-12 drop-shadow-md max-w-3xl mx-auto">
+            A powerful platform for sign language translation and recognition.
+        </p>
+        <div class="flex flex-col items-center space-y-4 sm:space-y-6">
+          <div class="w-full sm:w-auto">
+            <a href="/data" class="btn btn-primary block w-full max-w-xs mx-auto sm:inline-block sm:w-auto text-lg font-semibold transition duration-200 hover:bg-blue-700 focus:ring-blue-500">
+              Start Capturing
+            </a>
+          </div>
+          <div class="w-full sm:w-auto">
+            <a href="/manage" class="btn btn-secondary block w-full max-w-xs mx-auto sm:inline-block sm:w-auto text-lg font-semibold transition duration-200 hover:bg-gray-700 focus:ring-gray-500">
+              Manage Your Data
+            </a>
+          </div>
     </div>
-</div>
+    <!-- Decorative shapes -->
+    <div class="absolute top-0 left-0 w-64 h-64 bg-purple-800 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+    <div class="absolute top-20 right-0 w-64 h-64 bg-indigo-800 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+    <div class="absolute bottom-0 left-20 w-64 h-64 bg-blue-800 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+</section>
+
+<style>
+@keyframes blob {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+.animate-blob {
+  animation: blob 7s infinite;
+}
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+</style>
 {% endblock %}

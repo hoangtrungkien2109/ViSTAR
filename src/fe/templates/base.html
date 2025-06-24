@@ -85,36 +85,70 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen flex flex-col">
     <!-- Navigation -->
     <nav class="bg-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                  <a href="/">
+                  <a href="/about" class="flex items-center">
                     <img src="{{ url_for('static', path='css/VISTAR.webp') }}"
                          alt="ViSTAR Logo"
                          class="logo"
                          style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
                   </a>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="/TTI" class="text-gray-600 hover:text-gray-900">Text To Sign</a>
                     <a href="/STT" class="text-gray-600 hover:text-gray-900">Sign To Text</a>
                     <a href="/data" class="text-gray-600 hover:text-gray-900">Create Data</a>
                     <a href="/manage" class="text-gray-600 hover:text-gray-900">Manage Data</a>
+
                     {% if request.session.get('username') %}
-                        <span class="text-gray-600 hover:text-gray-900">Hi, {{ request.session.get('username') }}!</span>
-                        <a href="/logout" class="text-gray-600 hover:text-gray-900">Logout</a>
+                        <div class="relative group">
+                            <button class="text-gray-600 hover:text-gray-900 focus:outline-none">
+                                Hi, {{ request.session.get('username') }}!
+                            </button>
+                            <div class="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                                <a href="/logout" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Logout</a>
+                            </div>
+                        </div>
                     {% else %}
                         <a href="/login" class="text-gray-600 hover:text-gray-900">Login</a>
                     {% endif %}
+                    <a href="/" class="text-gray-600 hover:text-gray-900 font-semibold">About Us</a>
+                </div>
+                <div class="flex items-center md:hidden">
+                    <button id="mobile-menu-button" class="text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" aria-label="Toggle menu">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
+        <div id="mobile-menu" class="hidden md:hidden">
+            <a href="/STT" class="block px-4 py-2 text-gray-600 hover:bg-gray-100">Sign To Text</a>
+            <a href="/data" class="block px-4 py-2 text-gray-600 hover:bg-gray-100">Create Data</a>
+            <a href="/manage" class="block px-4 py-2 text-gray-600 hover:bg-gray-100">Manage Data</a>
+            {% if request.session.get('username') %}
+                <a href="# id='hiuser' class="block px-4 py-2 text-gray-600 hover:bg-gray-100">Hi, {{ request.session.get('username') }}!</a>
+                <a href="/logout" class="block px-4 py-2 text-gray-600 hover:bg-gray-100">Logout</a>
+            {% else %}
+                <a href="/login" class="block px-4 py-2 text-gray-600 hover:bg-gray-100">Login</a>
+            {% endif %}
+        </div>
     </nav>
+    <script>
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+    </script>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
+    <main class="container mx-auto px-4 py-8 flex-grow">
         {% if error_msg %}
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                 {{ error_msg }}
@@ -131,7 +165,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white shadow-lg mt-auto">
+    <footer class="bg-white shadow-lg">
         <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
             <p class="text-center text-gray-500 text-sm">
                 &copy; 2025 ViSTAR. All rights reserved.

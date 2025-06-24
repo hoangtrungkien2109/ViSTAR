@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}About{% endblock %}
+{% block content %}
+<div class="bg-white min-h-screen text-gray-900 px-6 py-12">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col lg:flex-row items-center lg:items-start gap-12">
+      <!-- Left content -->
+      <div class="lg:w-1/2 space-y-6">
+        <span class="inline-block bg-gray-200 text-gray-900 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">AI-Powered Translation</span>
+        <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight">
+          Forging Tomorrow's <span class="text-purple-600">Inclusive World</span>
+          <span class="block text-xl font-normal text-gray-600 mt-2">
+            "Công nghệ như nước chảy về nguồn<br>
+            Mở đường kết nối trái tim không biên giới"
+          </span>
+        </h1>
+        <p class="text-lg max-w-md">
+          Translate anything into sign language,<br />using machine learning.
+        </p>
+        <a href="/" class="inline-block bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-full transition duration-300">
+          Translate now &rarr;
+        </a>
+      </div>
+      <!-- Right content: video -->
+      <div class="lg:w-1/2 rounded-lg overflow-hidden shadow-lg">
+        <video autoplay muted loop playsinline class="w-full rounded-lg">
+          <source src="{{ url_for('static', path='./resources/VistarDemo.mp4') }}" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
+
+    <!-- Vision statement -->
+    <h2 class="text-center text-gray-900 text-lg font-semibold mt-16 mb-8">
+      Our Vision: To Improve the Lives of 70 Million Deaf People Worldwide
+    </h2>
+
+    <!-- Info cards grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="bg-gray-100 p-6 rounded-lg shadow-md space-y-2">
+        <div class="text-2xl font-bold">70,000,000</div>
+        <div class="text-gray-700 text-sm">
+          Globally there are 70 million deaf people. By 2050, over 700 million people could have disabling hearing loss.
+        </div>
+        <a href="https://www.who.int/news-room/fact-sheets/detail/deafness-and-hearing-loss"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="inline-block bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide transition-colors duration-200 ease-in-out">
+           Source
+        </a>
+      </div>
+      <div class="bg-gray-100 p-6 rounded-lg shadow-md space-y-2">
+        <div class="text-xl font-semibold">Literacy Challenge</div>
+        <div class="text-gray-700 text-sm">
+          Spoken language literacy rates among deaf individuals are uncertain, with estimates ranging from 20% to 50%.
+        </div>
+
+      </div>
+      <div class="bg-gray-100 p-6 rounded-lg shadow-md space-y-2">
+        <div class="text-xl font-semibold">$1.2B</div>
+        <div class="text-gray-700 text-sm">
+          The Vietnam sign language translation market is valued at <span class="font-medium">$400M</span>, with a Southeast Asian regional estimate of <span class="font-medium">$1.2B</span> across 6 major developing economies (Vietnam, Thailand, Indonesia, Philippines, Malaysia, Singapore).
+        </div>
+
+      </div>
+      <div class="bg-gray-100 p-6 rounded-lg shadow-md space-y-2">
+        <div class="text-xl font-semibold">Real-Time Sign Language Translation+</div>
+        <div class="text-gray-700 text-sm">
+          Break communication barriers instantly with AI-powered sign language translation. Our system converts signs to text/speech and vice versa with <span class="font-medium">high accuracy</span>.
+        </div>
+      </div>
+      <div class="bg-gray-100 p-6 rounded-lg shadow-md space-y-2">
+  <div class="text-xl font-semibold">Vietnamese Sign Language Two-Way Translation</div>
+  <div class="text-gray-700 text-sm">
+    <span class="font-medium">Sign-to-Text:</span> Converts Vietnamese Sign Language gestures to written/spoken Vietnamese<br>
+    <span class="font-medium">Text-to-Sign:</span> Transforms text into animated sign language skeleton </div>
+  <span class="inline-block bg-purple-700 text-white text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide">Patent Pending</span>
+</div>
+
+<div class="bg-gray-100 p-6 rounded-lg shadow-md space-y-2">
+  <div class="text-xl font-semibold">Academic Recognition</div>
+  <div class="text-gray-700 text-sm">
+    Validated by Professors from <span class="font-medium">Chungbuk National University</span> (South Korea) and <span class="font-medium">Duy Tan University</span> (Vietnam).
+  </div>
+  <span class="inline-block bg-red-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide">Peer-Reviewed</span>
+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meet our Team Section -->
+  <section class="mt-20 max-w-7xl mx-auto px-6">
+    <h2 class="text-3xl font-extrabold text-gray-900 text-center mb-2">Meet our Team</h2>
+    <p class="text-center text-gray-600 mb-12 max-w-3xl mx-auto">
+      We are innovators and experts committed to excellence, working together to create solutions that shape the future.
+    </p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <!-- Team Member 1 -->
+      <div class="bg-gray-100 rounded-lg p-6 shadow-md text-center space-y-4">
+        <span class="inline-block bg-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">MEMBER 1</span>
+        <img src="{{ url_for('static', path='./resources/DMT.png') }}" alt="" class="mx-auto rounded-full w-32 h-32 object-cover">
+        <h3 class="text-xl font-semibold text-gray-900">DO MINH TUNG</h3>
+        <p class="text-gray-700 text-sm">
+          No word for this wonderkid.
+        </p>
+      </div>
+      <!-- Team Member 2 -->
+      <div class="bg-gray-100 rounded-lg p-6 shadow-md text-center space-y-4">
+        <span class="inline-block bg-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">MEMBER 2</span>
+        <img src="" alt="" class="mx-auto rounded-full w-32 h-32 object-cover">
+        <h3 class="text-xl font-semibold text-gray-900">Hoang Trong Hien</h3>
+        <p class="text-gray-700 text-sm">
+          Experience Project manager, work 3 job in the same time.
+        </p>
+      </div>
+      <!-- Team Member 3 -->
+      <div class="bg-gray-100 rounded-lg p-6 shadow-md text-center space-y-4">
+        <span class="inline-block bg-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">MEMBER 3</span>
+        <img src="" alt="" class="mx-auto rounded-full w-32 h-32 object-cover">
+        <h3 class="text-xl font-semibold text-gray-900">Hoang Trung Kien</h3>
+        <p class="text-gray-700 text-sm">
+          TAI NANG TRE!.
+        </p>
+      </div>
+    </div>
+    <!-- Thanks for Contributor Section -->
+    <div class="mt-16 max-w-4xl mx-auto bg-gray-100 rounded-lg p-6 shadow-md text-center">
+      <h3 class="text-2xl font-semibold text-gray-900 mb-2">Thanks for Contributor</h3>
+      <p class="text-gray-700 text-sm max-w-xl mx-auto">
+        Trinh Ngoc Chau - <span class="font-semibold text-blue-600">Speech Technology Specialist</span> in
+        advanced real-time speech-to-text systems
+      </p>
+    </div>
+  </section>
+</div>
+{% endblock %}
