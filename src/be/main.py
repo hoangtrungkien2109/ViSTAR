@@ -407,9 +407,11 @@ def predict_stt():
                             predictions = []
 
                 y_offset = 100
-                cv2.rectangle(image, (0, 0), (640, 40), (245, 117, 16), -1)
-                cv2.putText(image, ' '.join(sentence), (3, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.rectangle(image, (0, 0), (640, 80), (245, 117, 16), -1)
+
+                # Bigger text (fontScale = 2) and adjusted y-position
+                cv2.putText(image, ' '.join(sentence), (10, 55),
+                            cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 4, cv2.LINE_AA)
 
                 # Encode the frame as JPEG
                 ret, buffer = cv2.imencode('.jpg', image)

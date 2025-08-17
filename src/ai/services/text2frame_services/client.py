@@ -28,7 +28,7 @@ def run():
             response = requests.get("http://localhost:8000/me/user_id")
             user_id = response.json()["user_id"]
 
-            frames = ss.get_frame(user_id=user_id)
+            frames = ss.get_frame()
             if frames:
                 frame_matrix_list = streaming_pb2.MatrixList(
                     matrix=[

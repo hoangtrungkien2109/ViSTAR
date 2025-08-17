@@ -42,9 +42,13 @@ HAND_CONNECTIONS = [
 def visualize_landmarks_minimal(array, target_height=480, target_width=720, line_thickness=1):
     if array.shape != (1, 75, 3):
         raise ValueError(f"Expected shape (1,75,3), got {array.shape}")
-    
+
     img = np.zeros((target_height, target_width, 3), dtype=np.uint8)
     points = (array.squeeze(0)[:, :2] * [target_width, target_height]).astype(np.int32)
+
+    # Replace all (0, 0) points with (target_width//2, target_height)
+    zero_mask = (points[:, 0] <= 0) & (points[:, 1] <= 0)
+    points[zero_mask] = [target_width // 2, target_height]
 
     def draw_landmarks(landmarks, color):
         valid = ~np.isnan(landmarks[:, 0])
@@ -65,7 +69,7 @@ def visualize_landmarks_minimal(array, target_height=480, target_width=720, line
         executor.submit(draw_landmarks, points[54:], (0, 0, 255))
         executor.submit(draw_connections, points[54:], HAND_CONNECTIONS, (0, 0, 255))
 
-    success, encoded_img = cv2.imencode('.png', img)  # PNG is often faster than JPEG
+    success, encoded_img = cv2.imencode('.png', img)
     if not success:
         raise RuntimeError("Failed to encode image")
     return encoded_img.tobytes()

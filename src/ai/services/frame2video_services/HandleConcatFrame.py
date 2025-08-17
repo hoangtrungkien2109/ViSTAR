@@ -35,6 +35,8 @@ def concatenate_frame(prev_frame, post_frame, rest):
     else:
         concatenated_frame = np.concatenate((middle, [post_frame], rest),axis=0)
     
+    # concatenated_frame = np.concatenate(([prev_frame], middle, [post_frame]),axis=0)
+    
     return (concatenated_frame, num_frame_concat)
 
 
@@ -83,7 +85,8 @@ class HandleConcatFrame:
                 
                 self.processed_frame_queue.extend(result)
             else:
-                new_tail, self.num_default_frames = concatenate_frame(prev_frame=self.default_frame, post_frame=frames[0], rest=frames[1:])
+                prev_frame = self.processed_frame_queue[-1]
+                new_tail, self.num_default_frames = concatenate_frame(prev_frame=prev_frame, post_frame=frames[0], rest=frames[1:])
                 self.processed_frame_queue.extend(new_tail.tolist())
         
         except IndexError as e:
