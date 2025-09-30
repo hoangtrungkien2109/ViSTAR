@@ -314,11 +314,38 @@ def play_tts_async(text, lang='vi'):
         print(f"Error in TTS: {e}")
     finally:
         tts_playing = False
+
+from pykalman import KalmanFilter
+# <<< 2. KALMAN FILTER INITIALIZATION >>>
+# The state is the vector of probabilities for our actions.
+transition_matrix = np.eye(num_actions)
+observation_matrix = np.eye(num_actions)
+initial_state_mean = np.ones(num_actions) / num_actions
+
+# --- TUNING KNOBS ---
+# Adjust these based on how noisy your model is vs. how fast signs change.
+# Increase observation_covariance if your model's output is very jittery.
+# Increase transition_covariance if signs are performed very quickly back-to-back.
+transition_covariance = np.eye(num_actions) * 0.01
+observation_covariance = np.eye(num_actions) * 0.2
+
+kf = KalmanFilter(
+    n_dim_obs=num_actions,
+    n_dim_state=num_actions,
+    initial_state_mean=initial_state_mean,
+    transition_matrices=transition_matrix,
+    observation_matrices=observation_matrix,
+    transition_covariance=transition_covariance,
+    observation_covariance=observation_covariance,
+)
+# Initialize the filter's state
+filtered_state_means = initial_state_mean
+filtered_state_covariances = np.eye(num_actions)
 def predict_stt():
-    global sequence,sentence,ema_predictions,tts_playing
+    global sequence,sentence,filtered_state_means,filtered_state_covariances,tts_playing
     camera = cv2.VideoCapture(0)
     pygame.mixer.init()
-    with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+    with mp_holistic.Holistic(min_detection_confidence=0.3, min_tracking_confidence=0.3) as holistic:
         while camera.isOpened():
 
             ret, frame = camera.read()
@@ -371,23 +398,21 @@ def predict_stt():
                 sequence.append(keypoints)
                 sequence = sequence[-40:]
                 if len(sequence) == 40:
-                    input_tensor = torch.tensor(sequence, dtype=torch.float32).unsqueeze(0)  # Shape: (1, 30, 369)
-                    input_tensor = input_tensor.to(device)
+                    input_tensor = torch.tensor(sequence, dtype=torch.float32).unsqueeze(0).to(device)
                     with torch.no_grad():
                         output = model(input_tensor, update_cache=False)
-                        res = torch.softmax(output, dim=1).cpu().numpy()[0]
+                        res = torch.softmax(output, dim=1).cpu().numpy()[0]  # This is our measurement
 
-                    # Dynamic threshold adjustment
-                    if EMA_option:
-                        if ema_predictions is None:
-                            ema_predictions = res
-                        else:
-                            ema_predictions = alpha * res + (1 - alpha) * ema_predictions
-                        avg_predictions = ema_predictions
-                    else:
-                        predictions.append(res)
-                        predictions = predictions[-10:]  # Keep the last 10 predictions
-                        avg_predictions = np.mean(predictions, axis=0)
+                    # <<< 3. UPDATE FILTER INSTEAD OF EMA >>>
+                    (filtered_state_means, filtered_state_covariances) = kf.filter_update(
+                        filtered_state_mean=filtered_state_means,
+                        filtered_state_covariance=filtered_state_covariances,
+                        observation=res
+                    )
+
+                    # The smoothed prediction is the latest filtered state.
+                    avg_predictions = filtered_state_means
+
                     print(np.max(avg_predictions))
                     print(np.argmax(avg_predictions))
                     avg_pred_class = np.argmax(avg_predictions)
@@ -401,17 +426,19 @@ def predict_stt():
                                 Thread(target=play_tts_async, args=(sentence_tts, 'vi')).start()
                         # Reset for the next prediction
                         sequence = []
+                        filtered_state_means = initial_state_mean
+                        filtered_state_covariances = np.eye(num_actions)
                         if EMA_option:
                             ema_predictions = None
                         else:
                             predictions = []
 
                 y_offset = 100
-                cv2.rectangle(image, (0, 0), (640, 80), (245, 117, 16), -1)
+                cv2.rectangle(image, (0, 0), (640, 40), (245, 117, 16), -1)
 
                 # Bigger text (fontScale = 2) and adjusted y-position
-                cv2.putText(image, ' '.join(sentence), (10, 55),
-                            cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 4, cv2.LINE_AA)
+                cv2.putText(image, ' '.join(sentence), (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 4, cv2.LINE_AA)
 
                 # Encode the frame as JPEG
                 ret, buffer = cv2.imencode('.jpg', image)
