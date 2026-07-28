@@ -53,6 +53,26 @@ class RecognizerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "SIGN_RECOGNIZER"):
                 RecognizerSettings.from_env()
 
+    def test_mode_specific_label_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            labels = Path(directory) / "labels.json"
+            labels.write_text(
+                '{"actions":["a","b"],"actions_tts":["A","B"]}',
+                encoding="utf-8",
+            )
+            with patch.dict(
+                os.environ,
+                {
+                    **self.base_env,
+                    "SIGN_RECOGNIZER": "felf_slr",
+                    "FELF_LABELS_FILE": str(labels),
+                },
+                clear=False,
+            ):
+                settings = RecognizerSettings.from_env()
+            self.assertEqual(settings.labels, ("a", "b"))
+            self.assertEqual(settings.tts_labels, ("A", "B"))
+
     def test_baseline_checkpoint_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = Path(directory) / "baseline.pth"
@@ -170,6 +190,36 @@ class RecognizerTests(unittest.TestCase):
                 )
             self.assertEqual(probabilities.shape, (19,))
             self.assertAlmostEqual(float(probabilities.sum()), 1.0, places=5)
+
+    def test_packaged_vistar23_deployment(self):
+        root = Path(__file__).resolve().parents[1]
+        checkpoint_dir = root / "src" / "be" / "checkpoints"
+        with patch.dict(
+            os.environ,
+            {
+                **self.base_env,
+                "SIGN_RECOGNIZER": "felf_slr",
+                "FELF_LABELS_FILE": str(
+                    checkpoint_dir / "vistar23_labels.json"
+                ),
+                "FELF_CHECKPOINT": str(
+                    checkpoint_dir / "vistar23_felf_seed42_swa.pth"
+                ),
+                "FELF_MT_CHECKPOINT": str(
+                    checkpoint_dir / "vistar23_mt_seed42_swa.pth"
+                ),
+                "FELF_REQUIRE_MT": "true",
+                "FELF_LRG_WEIGHT": "1.0",
+                "FELF_RF_WEIGHT": "1.0",
+            },
+            clear=False,
+        ):
+            recognizer = FELFSLRRecognizer(RecognizerSettings.from_env())
+            probabilities = recognizer.predict_proba(
+                np.zeros((40, 258), dtype=np.float32)
+            )
+        self.assertEqual(probabilities.shape, (23,))
+        self.assertAlmostEqual(float(probabilities.sum()), 1.0, places=5)
 
 
 if __name__ == "__main__":

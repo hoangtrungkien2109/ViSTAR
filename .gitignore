@@ -29,6 +29,10 @@ cut.pth
 *.pth
 *.ckpt
 *.onnx
+!src/be/checkpoints/vistar23_labels.json
+!src/be/checkpoints/vistar23_manifest.json
+!src/be/checkpoints/vistar23_felf_seed42_swa.pth
+!src/be/checkpoints/vistar23_mt_seed42_swa.pth
 .DS_Store
 
 # Scripts

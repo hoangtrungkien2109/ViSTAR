@@ -153,6 +153,13 @@ class RecognizerSettings:
 
         label_path = _optional_path("RECOGNIZER_LABELS_FILE")
         if label_path is None:
+            mode_label_variable = (
+                "BASELINE_LABELS_FILE"
+                if mode == "baseline"
+                else "FELF_LABELS_FILE"
+            )
+            label_path = _optional_path(mode_label_variable)
+        if label_path is None:
             actions, tts_actions = DEFAULT_ACTIONS, DEFAULT_TTS_ACTIONS
         else:
             actions, tts_actions = _labels_from_file(label_path)

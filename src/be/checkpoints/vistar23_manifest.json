@@ -1,0 +1,62 @@
+{
+  "name": "ViSTAR-23 FELF-SLR deployment",
+  "status": "controlled signer-dependent pilot",
+  "dataset": "Rework_Data",
+  "seed": 42,
+  "protocol": {
+    "num_classes": 23,
+    "samples_per_class": 30,
+    "split": {
+      "train": 414,
+      "validation": 138,
+      "test": 138
+    },
+    "augmentation_repeats": 10,
+    "sequence_length": 40
+  },
+  "stage1": {
+    "checkpoint": "vistar23_felf_seed42_swa.pth",
+    "sha256": "3BE6F45FDA4E4B8E6B3C70C90BE603FBF140E9ABE3D8EF7E4535A132CAF45D64",
+    "feature_dimensions": {
+      "left": 165,
+      "right": 165,
+      "global": 23
+    },
+    "fusion": {
+      "baseline": 1.0,
+      "lrg": 1.0,
+      "rf": 1.0,
+      "normalizer": 3.0
+    },
+    "selected_checkpoint": "SWA",
+    "validation_top1_percent": 100.0,
+    "test_top1_percent": 100.0,
+    "test_top5_percent": 100.0
+  },
+  "stage2_morphtraj": {
+    "checkpoint": "vistar23_mt_seed42_swa.pth",
+    "sha256": "A017D9A992FF4E6DAB7F55E32EE65918C67E66FF85BDAE16C5B1AAEAF97721D9",
+    "feature_dimensions": {
+      "morphology": 310,
+      "trajectory": 131,
+      "orientation": 40
+    },
+    "parameters": 973184,
+    "selected_checkpoint": "SWA",
+    "validation_top1_percent": 100.0,
+    "test_top1_percent": 100.0,
+    "test_top5_percent": 100.0
+  },
+  "stage2_fusion": {
+    "baseline": 0.5,
+    "stage1_felf": 1.0,
+    "morphtraj": 0.5,
+    "test_top1_percent": 100.0,
+    "test_top5_percent": 100.0
+  },
+  "limitations": [
+    "The controlled pilot is signer-dependent.",
+    "The reported result is not evidence of signer-independent generalization.",
+    "Checkpoint class order must match vistar23_labels.json exactly."
+  ]
+}

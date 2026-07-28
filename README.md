@@ -116,27 +116,29 @@ interface:
 | `baseline` | Existing 40-frame, 457-D ViSTAR feature sequence | Original ViSTAR Transformer |
 | `felf_slr` | Raw normalized landmarks converted to `[T,165]`, `[T,165]`, and `[T,23]` | Baseline/LRG/RF logit fusion, optionally followed by canonical MT fusion |
 
-Copy `.env.example` to `.env` and choose the active recognizer:
-
-```dotenv
-SIGN_RECOGNIZER=baseline
-BASELINE_CHECKPOINT=src/be/n2_dict.pth
-```
-
-For the complete FELF-SLR path:
+The repository defaults to the packaged 23-class FELF-SLR deployment. Copy
+`.env.example` to `.env`:
 
 ```dotenv
 SIGN_RECOGNIZER=felf_slr
-RECOGNIZER_LABELS_FILE=/absolute/path/to/vistar_labels.json
-FELF_CHECKPOINT=/absolute/path/to/vistar_felf_stage1.pth
-FELF_MT_CHECKPOINT=/absolute/path/to/vistar_mt.pth
+FELF_LABELS_FILE=src/be/checkpoints/vistar23_labels.json
+FELF_CHECKPOINT=src/be/checkpoints/vistar23_felf_seed42_swa.pth
+FELF_MT_CHECKPOINT=src/be/checkpoints/vistar23_mt_seed42_swa.pth
 FELF_REQUIRE_MT=true
 ```
 
-The FELF checkpoints must be trained for exactly the same labels and class
-order as `RECOGNIZER_LABELS_FILE`. WLASL checkpoints cannot be used directly
-for the 19-class Vietnamese pilot. Research checkpoints are intentionally not
-committed to this application repository.
+To use the original 19-class ViSTAR Baseline instead:
+
+```dotenv
+SIGN_RECOGNIZER=baseline
+BASELINE_LABELS_FILE=
+BASELINE_CHECKPOINT=src/be/n2_dict.pth
+```
+
+`RECOGNIZER_LABELS_FILE` remains available as an explicit shared override.
+Otherwise, `BASELINE_LABELS_FILE` and `FELF_LABELS_FILE` keep each mode paired
+with its own checkpoint class order. WLASL checkpoints remain incompatible
+with this Vietnamese pilot.
 
 At startup, ViSTAR validates checkpoint compatibility and fails clearly when a
 selected recognizer is not configured. It never silently falls back to another
@@ -149,12 +151,16 @@ GET /recognizer/status
 The canonical fusion defaults are:
 
 ```text
-Stage 1: (Baseline + 1.0*LRG + 0.75*RF) / 2.75
+Stage 1 (packaged VSL-23): (Baseline + 1.0*LRG + 1.0*RF) / 3.0
 Stage 2: 0.5*Baseline + 1.0*Stage1 + 0.5*MT
 ```
 
-See `.env.example` for separate expert-checkpoint options and architecture
-settings. Configuration values must match those used to train the checkpoint.
+The packaged seed-42 checkpoints use 30 samples per class and a fixed
+18/6/6 train/validation/test split. B6, LRG, RF, Stage-1 FELF, and MorphTraj
+each reached 100% validation and test Top-1/Top-5 on this controlled,
+signer-dependent pilot. This result must not be interpreted as
+signer-independent performance. Checkpoint hashes and protocol provenance are
+recorded in `src/be/checkpoints/vistar23_manifest.json`.
 
 ## Environment Variables
 
