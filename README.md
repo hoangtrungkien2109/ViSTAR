@@ -116,8 +116,16 @@ interface:
 | `baseline` | Existing 40-frame, 457-D ViSTAR feature sequence | Original ViSTAR Transformer |
 | `felf_slr` | Raw normalized landmarks converted to `[T,165]`, `[T,165]`, and `[T,23]` | Baseline/LRG/RF logit fusion, optionally followed by canonical MT fusion |
 
-The repository defaults to the packaged 23-class FELF-SLR deployment. Copy
+The repository defaults to the original 19-class ViSTAR Baseline. Copy
 `.env.example` to `.env`:
+
+```dotenv
+SIGN_RECOGNIZER=baseline
+BASELINE_LABELS_FILE=
+BASELINE_CHECKPOINT=src/be/n2_dict.pth
+```
+
+To use the packaged 23-class FELF-SLR deployment instead:
 
 ```dotenv
 SIGN_RECOGNIZER=felf_slr
@@ -125,14 +133,6 @@ FELF_LABELS_FILE=src/be/checkpoints/vistar23_labels.json
 FELF_CHECKPOINT=src/be/checkpoints/vistar23_felf_seed42_swa.pth
 FELF_MT_CHECKPOINT=src/be/checkpoints/vistar23_mt_seed42_swa.pth
 FELF_REQUIRE_MT=true
-```
-
-To use the original 19-class ViSTAR Baseline instead:
-
-```dotenv
-SIGN_RECOGNIZER=baseline
-BASELINE_LABELS_FILE=
-BASELINE_CHECKPOINT=src/be/n2_dict.pth
 ```
 
 `RECOGNIZER_LABELS_FILE` remains available as an explicit shared override.
