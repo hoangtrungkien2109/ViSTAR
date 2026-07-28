@@ -57,9 +57,9 @@ The project is structured into several key components:
 
 ## 🚀 Installation
 
-1. Clone the repository:
+1. Clone the `final` branch:
 ```bash
-git clone https://github.com/yourusername/ViSTAR.git
+git clone --branch final https://github.com/hoangtrungkien2109/ViSTAR.git
 cd ViSTAR
 ```
 
@@ -106,14 +106,68 @@ Production:
 docker-compose -f docker-compose.prod.yaml up
 ```
 
-## 🔐 Environment Variables
+## Runtime Sign Recognizer
 
-Create a `.env` file in the root directory with the following variables:
+The sign-to-text camera path supports two recognizers through one stable
+interface:
+
+| Value | Input | Model |
+|---|---|---|
+| `baseline` | Existing 40-frame, 457-D ViSTAR feature sequence | Original ViSTAR Transformer |
+| `felf_slr` | Raw normalized landmarks converted to `[T,165]`, `[T,165]`, and `[T,23]` | Baseline/LRG/RF logit fusion, optionally followed by canonical MT fusion |
+
+Copy `.env.example` to `.env` and choose the active recognizer:
+
+```dotenv
+SIGN_RECOGNIZER=baseline
+BASELINE_CHECKPOINT=src/be/n2_dict.pth
 ```
-DATABASE_URL=your_database_url
-ELASTICSEARCH_URL=your_elasticsearch_url
-SECRET_KEY=your_secret_key
+
+For the complete FELF-SLR path:
+
+```dotenv
+SIGN_RECOGNIZER=felf_slr
+RECOGNIZER_LABELS_FILE=/absolute/path/to/vistar_labels.json
+FELF_CHECKPOINT=/absolute/path/to/vistar_felf_stage1.pth
+FELF_MT_CHECKPOINT=/absolute/path/to/vistar_mt.pth
+FELF_REQUIRE_MT=true
 ```
+
+The FELF checkpoints must be trained for exactly the same labels and class
+order as `RECOGNIZER_LABELS_FILE`. WLASL checkpoints cannot be used directly
+for the 19-class Vietnamese pilot. Research checkpoints are intentionally not
+committed to this application repository.
+
+At startup, ViSTAR validates checkpoint compatibility and fails clearly when a
+selected recognizer is not configured. It never silently falls back to another
+model. The active non-secret configuration is available at:
+
+```text
+GET /recognizer/status
+```
+
+The canonical fusion defaults are:
+
+```text
+Stage 1: (Baseline + 1.0*LRG + 0.75*RF) / 2.75
+Stage 2: 0.5*Baseline + 1.0*Stage1 + 0.5*MT
+```
+
+See `.env.example` for separate expert-checkpoint options and architecture
+settings. Configuration values must match those used to train the checkpoint.
+
+## Environment Variables
+
+Never commit a real `.env`. Start from the safe template:
+
+```bash
+cp .env.example .env
+```
+
+The template covers streaming, dictionary, Baseline, FELF-SLR, MorphTraj, and
+device settings. It also disables automatic admin creation by default. For a
+private development deployment, set `CREATE_DEFAULT_ADMIN=true` and provide
+all three `DEFAULT_ADMIN_*` values; never commit those values.
 
 ## 📁 Project Structure
 
@@ -122,6 +176,7 @@ ViSTAR/
 ├── src/
 │   ├── ai/                 # AI/ML models and services
 │   ├── be/                 # Backend services
+│   │   └── recognizers/    # Runtime Baseline/FELF-SLR registry
 │   ├── fe/                 # Frontend application
 │   ├── streaming/          # gRPC streaming services
 │   └── init_data/         # Initial data and setup scripts

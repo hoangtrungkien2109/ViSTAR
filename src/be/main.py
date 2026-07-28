@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 import os
+import secrets
 from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, LargeBinary
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from passlib.context import CryptContext
@@ -45,12 +46,17 @@ STATIC_DIR = os.path.join(BASE_DIR, "..", "fe", "static")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./users.db"  # Relative path, creates 'users.db' in current directory
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "VISTAR_DATABASE_URL", "sqlite:///./users.db"
+)
 # SQLALCHEMY_DATABASE2_URL = "sqlite:///./data_table.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-app.add_middleware(SessionMiddleware, secret_key="YOUR_SECRET_KEY")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("VISTAR_SESSION_SECRET") or secrets.token_urlsafe(32),
+)
 
 Base = declarative_base()
 
@@ -85,13 +91,24 @@ class User(Base):
 
 @app.on_event("startup")
 async def create_default_admin():
+    create_admin = os.getenv("CREATE_DEFAULT_ADMIN", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if not create_admin:
+        return
+    admin_username = os.getenv("DEFAULT_ADMIN_USERNAME", "").strip()
+    admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "").strip()
+    admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "")
+    if not all((admin_username, admin_email, admin_password)):
+        raise RuntimeError(
+            "CREATE_DEFAULT_ADMIN=true requires DEFAULT_ADMIN_USERNAME, "
+            "DEFAULT_ADMIN_EMAIL, and DEFAULT_ADMIN_PASSWORD."
+        )
     db = SessionLocal()
     try:
-
-        admin_username = "admin"
-        admin_email = "admin@example.com"
-        admin_password = "123"
-
         # Check if an admin with this username already exists.
         admin = db.query(User).filter(User.username == admin_username).first()
         if admin is None:
@@ -365,7 +382,7 @@ def predict_stt():
             finger_lencoded = [0] * 40
             finger_rencoded = [0] * 40
             # Determine hand orientation (if detected)
-            if results.pose_landmarks or (results.left_hand_landmarks or results.right_hand_landmarks):
+            if results.pose_landmarks:
                 pose_landmarks = np.array(
                     [[lm.x, lm.y, lm.z, lm.visibility] for lm in results.pose_landmarks.landmark])
                 left_hand_landmarks = np.array([[lm.x, lm.y, lm.z] for lm in
@@ -395,13 +412,16 @@ def predict_stt():
                                             determine_lhand_shape_encoded, determine_rhand_shape_encoded, finger_lencoded,
                                             finger_rencoded])
 
-                sequence.append(keypoints)
+                recognizer_frame = prepare_recognizer_frame(
+                    pose_landmarks,
+                    left_hand_landmarks,
+                    right_hand_landmarks,
+                    keypoints,
+                )
+                sequence.append(recognizer_frame)
                 sequence = sequence[-40:]
                 if len(sequence) == 40:
-                    input_tensor = torch.tensor(sequence, dtype=torch.float32).unsqueeze(0).to(device)
-                    with torch.no_grad():
-                        output = model(input_tensor, update_cache=False)
-                        res = torch.softmax(output, dim=1).cpu().numpy()[0]  # This is our measurement
+                    res = predict_recognizer_sequence(sequence)
 
                     # <<< 3. UPDATE FILTER INSTEAD OF EMA >>>
                     (filtered_state_means, filtered_state_covariances) = kf.filter_update(
@@ -437,7 +457,10 @@ def predict_stt():
                 cv2.rectangle(image, (0, 0), (640, 40), (245, 117, 16), -1)
 
                 # Bigger text (fontScale = 2) and adjusted y-position
-                cv2.putText(image, ' '.join(sentence), (10, 30),
+                display_text = (
+                    sentence if isinstance(sentence, str) else " ".join(sentence)
+                )
+                cv2.putText(image, display_text, (10, 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 4, cv2.LINE_AA)
 
                 # Encode the frame as JPEG
@@ -708,6 +731,12 @@ def start_camera():
         return {"status": "success", "message": "Camera started"}
     except Exception as e:
         return {"status": "error", "message": f"Error starting camera: {str(e)}"}
+
+
+@app.get("/recognizer/status")
+def get_recognizer_status():
+    """Return non-secret runtime recognizer configuration."""
+    return recognizer_status()
 
 @app.post("/stop_camera")
 def stop_camera():

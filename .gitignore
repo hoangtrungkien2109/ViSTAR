@@ -25,6 +25,10 @@ test.*
 streaming_pb2.py
 streaming_pb2_grpc.py
 cut.pth
+*.pt
+*.pth
+*.ckpt
+*.onnx
 .DS_Store
 
 # Scripts
